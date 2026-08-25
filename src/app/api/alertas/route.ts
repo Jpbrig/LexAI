@@ -32,6 +32,45 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export async function POST(req: NextRequest) {
+  try {
+    const { processoId, tipo, canal } = await req.json();
+
+    if (!processoId) {
+      return NextResponse.json({ error: "processoId é obrigatório" }, { status: 400 });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { email: "teste@lexai.com.br" },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
+    const novoAlerta = await prisma.alerta.create({
+      data: {
+        userId: user.id,
+        processoId,
+        tipo: tipo || "QUALQUER_MOVIMENTACAO",
+        canal: canal || "EMAIL",
+        ativo: true,
+      },
+      include: {
+        processo: true,
+      },
+    });
+
+    return NextResponse.json(novoAlerta, { status: 201 });
+  } catch (error: any) {
+    console.error("Erro ao criar alerta:", error);
+    return NextResponse.json(
+      { error: error.message || "Erro ao criar alerta" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(req: NextRequest) {
   try {
     const { id, ativo } = await req.json();
