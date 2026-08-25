@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Search, Loader2, Plus, Info, CheckCircle } from "lucide-react";
+import { ArrowLeft, Search, Loader2, Plus, Info, CheckCircle, UserCheck, Scale, FileText } from "lucide-react";
 
 const tribunais = [
   "TJSP", "TJRJ", "TJMG", "TJRS", "TJPR", "TJSC", "TJBA", "TJPE", "TJCE", "TJGO",
@@ -15,12 +15,17 @@ const tribunais = [
 
 export default function NovoProcessoPage() {
   const router = useRouter();
+  const [modoBusca, setModoBusca] = useState<"cnj" | "cpf">("cpf");
   const [numeroCnj, setNumeroCnj] = useState("");
+  const [cpfNome, setCpfNome] = useState("");
   const [tribunal, setTribunal] = useState("");
   const [notas, setNotas] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [found, setFound] = useState<null | { classe: string; assunto: string; orgaoJulgador: string }>(null);
+
+  const [foundCNJ, setFoundCNJ] = useState<null | { classe: string; assunto: string; orgaoJulgador: string }>(null);
+  const [resultadosCPF, setResultadosCPF] = useState<any[]>([]);
   const [error, setError] = useState("");
 
   function formatCnj(value: string) {
@@ -34,14 +39,14 @@ export default function NovoProcessoPage() {
     return formatted;
   }
 
-  async function buscarDataJud() {
+  async function buscarCNJ() {
     if (!numeroCnj || numeroCnj.replace(/\D/g, "").length < 15) {
-      setError("Informe o número CNJ completo (ex: 0012345-67.2023.8.26.0100)");
+      setError("Informe o número CNJ completo.");
       return;
     }
     setLoading(true);
     setError("");
-    setFound(null);
+    setFoundCNJ(null);
 
     try {
       const res = await fetch("/api/datajud/buscar", {
@@ -49,187 +54,222 @@ export default function NovoProcessoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ numeroCnj, tribunal }),
       });
-
       const data = await res.json();
-
       if (res.ok && data) {
-        setFound({
-          classe: data.classe || "Ação de Indenização por Danos Morais",
+        setFoundCNJ({
+          classe: data.classe || "Ação Cível",
           assunto: data.assunto || "Responsabilidade Civil",
-          orgaoJulgador: data.orgaoJulgador || "Vara Única",
+          orgaoJulgador: data.orgaoJulgador || "Vara Cível Central",
         });
         if (data.tribunal) setTribunal(data.tribunal);
-      } else {
-        // Fallback gracioso se não encontrado na base pública do DataJud
-        setFound({
-          classe: "Ação de Indenização por Danos Morais",
-          assunto: "Responsabilidade Civil / Geral",
-          orgaoJulgador: "Vara Única Central",
-        });
-        if (!tribunal) setTribunal("TJSP");
       }
-    } catch (err: any) {
-      console.error("Erro na busca DataJud:", err);
-      setFound({
-        classe: "Ação Cível Geral",
-        assunto: "Direito Civil",
-        orgaoJulgador: "Vara Central",
-      });
-      if (!tribunal) setTribunal("TJSP");
+    } catch (err) {
+      setError("Erro ao buscar no DataJud.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function salvarProcesso() {
-    if (!found) return;
+  async function buscarCPF() {
+    if (!cpfNome || cpfNome.trim().length < 3) {
+      setError("Digite o CPF ou Nome do cliente.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setResultadosCPF([]);
+
+    try {
+      const res = await fetch("/api/jusbrasil/buscar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ termo: cpfNome }),
+      });
+      const data = await res.json();
+      if (res.ok && data.processos) {
+        setResultadosCPF(data.processos);
+      } else {
+        setError(data.error || "Nenhum processo encontrado para este CPF.");
+      }
+    } catch (err) {
+      setError("Erro ao realizar busca por CPF no Jusbrasil.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function salvarProcessoUnico(p: any) {
     setSaving(true);
     try {
       const res = await fetch("/api/processos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          numeroCnj,
-          tribunal: tribunal || "TJSP",
-          classe: found.classe,
-          assunto: found.assunto,
-          orgaoJulgador: found.orgaoJulgador,
+          numeroCnj: p.numeroCnj,
+          tribunal: p.tribunal,
+          classe: p.classe,
+          assunto: p.assunto,
+          orgaoJulgador: p.orgaoJulgador,
           notas,
         }),
       });
 
       if (res.ok) {
         router.push("/dashboard/processos");
-      } else {
-        const errData = await res.json();
-        setError(errData.error || "Erro ao salvar no banco Supabase.");
       }
     } catch (err) {
-      console.error("Erro ao salvar processo:", err);
-      setError("Erro de conexão ao salvar processo.");
+      setError("Erro ao cadastrar processo.");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="max-w-2xl animate-fade-in">
-      <Link href="/dashboard/processos" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-6 w-fit">
+    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-16">
+      <Link href="/dashboard/processos" className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" />
-        Voltar
+        Voltar para Meus Processos
       </Link>
 
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold text-primary">Adicionar Processo</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Informe o número CNJ e buscamos automaticamente no DataJud para salvar no seu banco Supabase.
+      <div>
+        <h1 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Adicionar Novo Processo</h1>
+        <p className="text-slate-500 text-sm mt-1">
+          Busque por <strong>CPF/Nome do Cliente (Jusbrasil)</strong> ou por <strong>Número CNJ (DataJud)</strong>.
         </p>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card-premium border border-border space-y-6"
-      >
-        <div>
-          <label className="label">Número do processo (formato CNJ) *</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="0000000-00.0000.0.00.0000"
-              className={`input flex-1 font-mono ${error ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
-              value={numeroCnj}
-              onChange={(e) => {
-                setNumeroCnj(formatCnj(e.target.value));
-                setError("");
-                setFound(null);
-              }}
-            />
-            <button
-              onClick={buscarDataJud}
-              disabled={loading}
-              className="btn-primary py-2.5 px-4 flex-shrink-0"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              {loading ? "Buscando..." : "Buscar"}
-            </button>
-          </div>
-          {error && <p className="text-destructive text-xs mt-1.5 flex items-center gap-1"><Info className="w-3 h-3" />{error}</p>}
+      {/* Tabs Modo de Busca */}
+      <div className="flex bg-slate-200/80 p-1.5 rounded-2xl w-fit">
+        <button
+          onClick={() => { setModoBusca("cpf"); setError(""); }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            modoBusca === "cpf"
+              ? "bg-slate-900 text-white shadow-md"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <UserCheck className="w-4 h-4 text-amber-400" />
+          Busca por CPF / Nome (Jusbrasil)
+        </button>
 
-          <div className="flex items-start gap-2 mt-2 p-3 bg-muted/50 rounded-lg">
-            <Info className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              O número CNJ segue o formato NNNNNNN-DD.AAAA.J.TT.OOOO. A consulta consulta diretamente a API oficial do DataJud (CNJ).
-            </p>
-          </div>
-        </div>
+        <button
+          onClick={() => { setModoBusca("cnj"); setError(""); }}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            modoBusca === "cnj"
+              ? "bg-slate-900 text-white shadow-md"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <Scale className="w-4 h-4 text-amber-400" />
+          Busca por Número CNJ (DataJud)
+        </button>
+      </div>
 
-        {found && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-success/5 border border-success/30 rounded-xl p-4"
-          >
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="w-4 h-4 text-success" />
-              <span className="text-sm font-semibold text-success">Dados obtidos do DataJud</span>
+      {/* MODO BUSCA POR CPF / NOME */}
+      {modoBusca === "cpf" && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-2">CPF ou Nome do Cliente / Empresa *</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Ex: 123.456.789-00 ou João da Silva"
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-900"
+                value={cpfNome}
+                onChange={(e) => setCpfNome(e.target.value)}
+              />
+              <button
+                onClick={buscarCPF}
+                disabled={loading}
+                className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-6 py-3 rounded-xl shadow flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                {loading ? "Varrendo Jusbrasil..." : "Varrer Jusbrasil"}
+              </button>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">Classe</p>
-                <p className="font-medium text-foreground">{found.classe}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-0.5">Assunto</p>
-                <p className="font-medium text-foreground">{found.assunto}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-xs text-muted-foreground mb-0.5">Órgão Julgador</p>
-                <p className="font-medium text-foreground">{found.orgaoJulgador}</p>
+            {error && <p className="text-rose-600 text-xs mt-2 flex items-center gap-1 font-medium"><Info className="w-3.5 h-3.5" />{error}</p>}
+          </div>
+
+          {/* Lista de Processos Encontrados por CPF */}
+          {resultadosCPF.length > 0 && (
+            <div className="space-y-4 pt-4 border-t border-slate-100">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                {resultadosCPF.length} processos encontrados para este cliente no Jusbrasil:
+              </h3>
+
+              <div className="space-y-3">
+                {resultadosCPF.map((p, idx) => (
+                  <div key={idx} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{p.tribunal}</span>
+                        <code className="text-xs font-mono font-bold text-slate-900">{p.numeroCnj}</code>
+                      </div>
+                      <p className="text-xs font-bold text-slate-800">{p.classe}</p>
+                      <p className="text-[11px] text-slate-500">{p.orgaoJulgador} · Requerente: {p.parteRequerente}</p>
+                    </div>
+
+                    <button
+                      onClick={() => salvarProcessoUnico(p)}
+                      disabled={saving}
+                      className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow flex items-center justify-center gap-1.5 flex-shrink-0"
+                    >
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4 text-amber-400" />}
+                      Adicionar ao LexAI
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
-          </motion.div>
-        )}
+          )}
+        </motion.div>
+      )}
 
-        <div>
-          <label className="label">Tribunal</label>
-          <select
-            className="input"
-            value={tribunal}
-            onChange={(e) => setTribunal(e.target.value)}
-          >
-            <option value="">Selecione o tribunal...</option>
-            {tribunais.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
+      {/* MODO BUSCA POR CNJ */}
+      {modoBusca === "cnj" && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-2">Número do Processo CNJ *</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="0000000-00.0000.0.00.0000"
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 font-mono text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-900"
+                value={numeroCnj}
+                onChange={(e) => setNumeroCnj(formatCnj(e.target.value))}
+              />
+              <button
+                onClick={buscarCNJ}
+                disabled={loading}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 py-3 rounded-xl shadow flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                {loading ? "Buscando..." : "Buscar no DataJud"}
+              </button>
+            </div>
+            {error && <p className="text-rose-600 text-xs mt-2 flex items-center gap-1 font-medium"><Info className="w-3.5 h-3.5" />{error}</p>}
+          </div>
 
-        <div>
-          <label className="label">Notas internas (opcional)</label>
-          <textarea
-            className="input min-h-[80px] resize-none"
-            placeholder="Observações sobre este processo para uso interno..."
-            value={notas}
-            onChange={(e) => setNotas(e.target.value)}
-            rows={3}
-          />
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <Link href="/dashboard/processos" className="btn-outline flex-1 justify-center">
-            Cancelar
-          </Link>
-          <button
-            onClick={salvarProcesso}
-            disabled={!found || saving}
-            className="btn-accent flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            {saving ? "Salvando no Supabase..." : "Adicionar processo"}
-          </button>
-        </div>
-      </motion.div>
+          {foundCNJ && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
+              <p className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                Processo localizado no DataJud!
+              </p>
+              <p className="text-xs text-emerald-900 font-semibold">{foundCNJ.classe} - {foundCNJ.assunto}</p>
+              <p className="text-[11px] text-emerald-700">{foundCNJ.orgaoJulgador}</p>
+              <button
+                onClick={() => salvarProcessoUnico({ numeroCnj, tribunal: tribunal || "TJSP", ...foundCNJ })}
+                disabled={saving}
+                className="mt-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2 rounded-xl shadow flex items-center gap-1.5"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "+ Confirmar Cadastro"}
+              </button>
+            </div>
+          )}
+        </motion.div>
+      )}
     </div>
   );
 }

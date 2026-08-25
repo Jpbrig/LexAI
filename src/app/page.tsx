@@ -18,46 +18,51 @@ import {
   Gavel,
   Clock,
   Calculator,
-  Globe,
+  UserCheck,
   Sparkles,
   Lock,
+  Bot,
+  Database,
+  Layers,
 } from "lucide-react";
+
+const totalAgentesEcosystem = 1940;
 
 const features = [
   {
-    icon: Search,
-    title: "Busca Processual Oficial (DataJud)",
-    desc: "Consulte qualquer processo no DataJud (CNJ) pelo número CNJ em segundos. Cobertura completa de todos os tribunais do Brasil.",
+    icon: UserCheck,
+    title: "Busca Agregada Jusbrasil por CPF/Nome",
+    desc: "Varra todos os processos judiciais vinculados ao CPF ou Nome de um cliente de uma só vez.",
     color: "bg-slate-900 text-amber-400",
   },
   {
-    icon: Brain,
-    title: "Resumo Inteligente com IA",
-    desc: "Nossa IA analisa sentenças, acórdãos e despachos extensos e traduz a decisão em linguagem objetiva indicando o próximo passo.",
+    icon: Search,
+    title: "Busca Processual Oficial (DataJud)",
+    desc: "Consulte qualquer processo no DataJud (CNJ) pelo número CNJ com atualização automática de movimentações.",
     color: "bg-amber-500 text-white",
+  },
+  {
+    icon: Brain,
+    title: "Resumo Inteligente com IA Jurídica",
+    desc: "Nossa IA analisa sentenças e acórdãos extensos citando as fontes de lei e oferecendo a melhor estratégia recursal.",
+    color: "bg-slate-900 text-amber-400",
   },
   {
     icon: Calculator,
     title: "Cálculos Trabalhistas Instantâneos",
     desc: "Simule rescisões contratuais (CLT) com férias, 13º, aviso prévio e multa de 40% do FGTS em menos de 10 segundos.",
-    color: "bg-slate-900 text-amber-400",
+    color: "bg-amber-500 text-white",
   },
   {
     icon: FileText,
     title: "Gerador de Procuração Ad Judicia",
-    desc: "Gere e imprima procurações e declarações preenchidas automaticamente no padrão A4 oficial prontas para assinatura do cliente.",
-    color: "bg-amber-500 text-white",
-  },
-  {
-    icon: Bell,
-    title: "Alertas Automáticos",
-    desc: "Notificações por email sempre que houver qualquer nova publicação ou movimentação relevante na sua carteira.",
+    desc: "Gere e imprima procurações preenchidas automaticamente no padrão A4 oficial prontas para assinatura.",
     color: "bg-slate-900 text-amber-400",
   },
   {
-    icon: Lock,
-    title: "Segurança de Acesso Avançada",
-    desc: "Proteção contra acesso não autorizado com bloqueio automático temporário após 3 tentativas de login incorretas.",
+    icon: Bot,
+    title: `Orquestrador de ${totalAgentesEcosystem} Agentes IA`,
+    desc: "Integração direta com o ecossistema AgentHub com 1.940 agentes especializados em minutas, atos societários DREI e compliance.",
     color: "bg-amber-500 text-white",
   },
 ];
@@ -70,8 +75,8 @@ const planos = [
     desc: "Para advogados autônomos",
     features: [
       "50 processos monitorados",
-      "Todos os tribunais do Brasil (DataJud)",
-      "Alertas por email",
+      "Busca por CPF e CNJ (Jusbrasil + DataJud)",
+      "Alertas por email em tempo real",
       "Calculadora trabalhista ilimitada",
       "Gerador de procurações PDF",
       "30 resumos com IA por mês",
@@ -86,11 +91,12 @@ const planos = [
     popular: true,
     features: [
       "200 processos monitorados",
-      "Todos os tribunais do Brasil (DataJud)",
+      "Busca por CPF e CNJ (Jusbrasil + DataJud)",
       "Alertas por email e WhatsApp",
       "IA ilimitada para resumos",
       "Calculadora trabalhista ilimitada",
       "Gerador de procurações ilimitado",
+      "Acesso completo aos 1.940 Agentes de IA",
       "Suporte prioritário",
     ],
     btn: "bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20",
@@ -115,7 +121,7 @@ const planos = [
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-amber-500 selection:text-white">
-      {/* NAVBAR */}
+      {/* NAVBAR RESPONSIVA */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -127,16 +133,18 @@ export default function LandingPage() {
                 Lex<span className="text-amber-500">AI</span>
               </span>
             </div>
+
             <div className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-600">
               <a href="#features" className="hover:text-slate-900 transition-colors">Funcionalidades</a>
-              <a href="#ferramentas" className="hover:text-slate-900 transition-colors">Ferramentas</a>
+              <a href="#agentes" className="hover:text-slate-900 transition-colors">1.940 Agentes</a>
               <a href="#planos" className="hover:text-slate-900 transition-colors">Planos</a>
             </div>
-            <div className="flex items-center gap-3">
-              <Link href="/auth/signin" className="text-xs font-bold text-slate-700 hover:text-slate-900 px-3 py-2">
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/auth/signin" className="text-xs font-bold text-slate-700 hover:text-slate-900 px-2 sm:px-3 py-2">
                 Entrar
               </Link>
-              <Link href="/auth/signup" className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition-all active:scale-95">
+              <Link href="/auth/signup" className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl shadow-md transition-all active:scale-95">
                 Testar 14 Dias Grátis
               </Link>
             </div>
@@ -145,45 +153,72 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO SECTION */}
-      <section className="pt-32 pb-20 bg-slate-900 text-white relative overflow-hidden">
+      <section className="pt-28 sm:pt-36 pb-20 bg-slate-900 text-white relative overflow-hidden px-4">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent pointer-events-none" />
         
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="inline-flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 rounded-full px-4 py-1.5 mb-6 shadow-sm">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span className="text-slate-300 text-xs font-semibold">
-                Plataforma de Inteligência Jurídica Integrada ao DataJud / CNJ
+        <div className="max-w-7xl mx-auto text-center relative z-10">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <div className="inline-flex items-center gap-2 bg-slate-800/80 border border-slate-700/80 rounded-full px-3.5 py-1.5 mb-6 shadow-sm max-w-full">
+              <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <span className="text-slate-300 text-[11px] sm:text-xs font-semibold truncate">
+                Conectado ao DataJud / CNJ, Jusbrasil & Supabase Database
               </span>
             </div>
 
-            <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6 tracking-tight">
-              O Ecossistema de IA<br />
-              <span className="text-amber-400">que transforma sua advocacia</span>
+            <h1 className="font-display text-3xl sm:text-5xl lg:text-7xl font-bold text-white leading-tight mb-6 tracking-tight">
+              A Plataforma Jurídica Completa<br />
+              <span className="text-amber-400">com Busca por CPF & {totalAgentesEcosystem} Agentes</span>
             </h1>
 
-            <p className="text-slate-300 text-base sm:text-xl max-w-3xl mx-auto mb-10 leading-relaxed">
-              Acompanhe processos em tempo real, interprete sentenças com Inteligência Artificial, calcule verbas trabalhistas e gere procurações em segundos.
+            <p className="text-slate-300 text-sm sm:text-lg max-w-3xl mx-auto mb-10 leading-relaxed">
+              Consulte todos os processos de um cliente pelo CPF no Jusbrasil, acompanhe movimentações no DataJud, faça cálculos trabalhistas e gere procurações em segundos.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/auth/signup" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm py-4 px-8 rounded-2xl shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-95">
-                Começar 14 dias grátis
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto sm:max-w-none">
+              <Link href="/auth/signup" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm py-3.5 sm:py-4 px-8 rounded-2xl shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 transition-all active:scale-95">
+                Começar 14 Dias Grátis
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link href="/auth/signin" className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold text-sm py-4 px-8 rounded-2xl flex items-center justify-center gap-2 transition-all">
+              <Link href="/auth/signin" className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs sm:text-sm py-3.5 sm:py-4 px-8 rounded-2xl flex items-center justify-center gap-2 transition-all">
                 Acessar Conta de Teste
               </Link>
             </div>
-
-            <p className="text-slate-500 text-xs mt-4">
-              Sem necessidade de cartão de crédito · Teste completo por 14 dias
-            </p>
           </motion.div>
+
+          {/* Stats Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 max-w-4xl mx-auto border-t border-slate-800 pt-10 text-left">
+            <div>
+              <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">1.940</p>
+              <p className="text-slate-400 text-xs mt-0.5">Agentes Especializados</p>
+            </div>
+            <div>
+              <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">100%</p>
+              <p className="text-slate-400 text-xs mt-0.5">Tribunais do Brasil</p>
+            </div>
+            <div>
+              <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">10 seg</p>
+              <p className="text-slate-400 text-xs mt-0.5">Cálculo Rescisório CLT</p>
+            </div>
+            <div>
+              <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">0 Mocks</p>
+              <p className="text-slate-400 text-xs mt-0.5">Banco Supabase Real</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* AGENTS BANNER */}
+      <section id="agentes" className="py-16 bg-amber-500 text-slate-900">
+        <div className="max-w-7xl mx-auto px-4 text-center space-y-4">
+          <span className="bg-slate-900 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+            AgentHub Ecosystem
+          </span>
+          <h2 className="font-display text-2xl sm:text-4xl font-bold tracking-tight">
+            Mais de 1.940 Agentes de IA Trabalhando para o Seu Escritório
+          </h2>
+          <p className="text-slate-900/80 text-xs sm:text-sm max-w-2xl mx-auto font-medium">
+            De pareceres de risco processual a atos societários no padrão DREI — nosso orquestrador conecta sua demanda ao agente especializado ideal.
+          </p>
         </div>
       </section>
 
@@ -191,14 +226,11 @@ export default function LandingPage() {
       <section id="features" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <span className="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3.5 py-1.5 rounded-full">
-            Recursos do LexAI
+            Suite Jurídica Completa
           </span>
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 mt-4 tracking-tight">
-            Tudo que seu escritório precisa em um só lugar
+            Ferramentas Desenvolvidas para Advogados de Alta Performance
           </h2>
-          <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto">
-            Desenvolvido sob medida para advogados e escritórios brasileiros.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -230,7 +262,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {planos.map((plano, i) => (
+            {planos.map((plano) => (
               <div
                 key={plano.nome}
                 className={`bg-white rounded-3xl p-8 border ${plano.popular ? "border-amber-500 ring-2 ring-amber-500/20 shadow-xl" : "border-slate-200/80 shadow-sm"} relative flex flex-col justify-between`}
@@ -263,7 +295,7 @@ export default function LandingPage() {
                   href="/auth/signup"
                   className={`w-full py-3.5 rounded-2xl text-xs font-bold text-center block transition-all active:scale-95 ${plano.btn}`}
                 >
-                  Começar 14 dias grátis
+                  Começar 14 Dias Grátis
                 </Link>
               </div>
             ))}
@@ -280,7 +312,7 @@ export default function LandingPage() {
             </div>
             <span className="font-display text-base font-bold text-white">LexAI</span>
           </div>
-          <p>© 2026 LexAI. Todos os direitos reservados.</p>
+          <p>© 2026 LexAI. Integrado ao AgentHub com 1.940 agentes.</p>
         </div>
       </footer>
     </div>
