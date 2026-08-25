@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { seedDatabase } from "@/lib/seed";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    await seedDatabase();
-
     const user = await prisma.user.findFirst({
       where: { email: "teste@lexai.com.br" },
     });
 
     if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+      return NextResponse.json([]);
     }
 
     const alertas = await prisma.alerta.findMany({
@@ -25,10 +24,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(alertas);
   } catch (error: any) {
     console.error("Erro ao listar alertas:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao carregar alertas" },
-      { status: 500 }
-    );
+    return NextResponse.json([], { status: 200 });
   }
 }
 
