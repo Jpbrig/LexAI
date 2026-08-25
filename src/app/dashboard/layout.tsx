@@ -7,6 +7,7 @@ import {
   Scale,
   LayoutDashboard,
   FileText,
+  Calculator,
   Bell,
   Settings,
   LogOut,
@@ -19,6 +20,7 @@ import {
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/processos", label: "Processos", icon: FileText },
+  { href: "/dashboard/ferramentas", label: "Ferramentas & Cálculos", icon: Calculator },
   { href: "/dashboard/alertas", label: "Alertas", icon: Bell },
   { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
 ];
