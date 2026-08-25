@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  oab           String?   // Número OAB do advogado
+  plano         Plano     @default(FREE)
+  stripeCustomerId String? @unique
+  stripeSubscriptionId String? @unique
+  trialEndsAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts   Account[]
+  sessions   Session[]
+  processos  Processo[]
+  alertas    Alerta[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Processo {
+  id           String   @id @default(cuid())
+  numeroCnj    String   // Número no formato CNJ: NNNNNNN-DD.AAAA.J.TT.OOOO
+  tribunal     String   // Ex: TJSP, TRF1, STJ
+  classe       String?  // Ex: Ação Civil Pública
+  assunto      String?
+  orgaoJulgador String?
+  status       StatusProcesso @default(ATIVO)
+  ultimaAtualizacao DateTime?
+  dataDistribuicao  DateTime?
+  notas        String?  @db.Text
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  movimentacoes Movimentacao[]
+  alertas       Alerta[]
+
+  @@unique([numeroCnj, userId])
+  @@index([userId])
+}
+
+model Movimentacao {
+  id          String   @id @default(cuid())
+  processoId  String
+  processo    Processo @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  data        DateTime
+  tipo        String   // Ex: Despacho, Sentença, Acórdão
+  descricao   String   @db.Text
+  resumoIa    String?  @db.Text  // Resumo gerado pela IA
+  complemento String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([processoId])
+  @@index([data])
+}
+
+model Alerta {
+  id         String   @id @default(cuid())
+  userId     String
+  processoId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  processo   Processo @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  tipo       TipoAlerta @default(QUALQUER_MOVIMENTACAO)
+  canal      CanalAlerta @default(EMAIL)
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([processoId])
+}
+
+enum Plano {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ESCRITORIO
+}
+
+enum StatusProcesso {
+  ATIVO
+  ARQUIVADO
+  SUSPENSO
+  BAIXADO
+}
+
+enum TipoAlerta {
+  QUALQUER_MOVIMENTACAO
+  SENTENCA
+  ACORDAO
+  DESPACHO
+  AUDIENCIA
+}
+
+enum CanalAlerta {
+  EMAIL
+  WHATSAPP
+}
