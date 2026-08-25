@@ -1,41 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Bell, Plus, Trash2, CheckCircle, Clock, Gavel, FileText, Mail, MessageSquare, BellOff } from "lucide-react";
-
-const alertasMock = [
-  {
-    id: "1",
-    processo: "0012345-67.2023.8.26.0100",
-    tribunal: "TJSP",
-    classe: "Ação de Indenização por Danos Morais",
-    tipo: "QUALQUER_MOVIMENTACAO",
-    canal: "EMAIL",
-    ativo: true,
-    ultimoDisparado: "2026-08-25T10:30:00",
-  },
-  {
-    id: "2",
-    processo: "0098765-43.2022.4.03.6100",
-    tribunal: "TRF3",
-    classe: "Mandado de Segurança",
-    tipo: "SENTENCA",
-    canal: "EMAIL",
-    ativo: true,
-    ultimoDisparado: null,
-  },
-  {
-    id: "3",
-    processo: "0001122-33.2024.5.15.0001",
-    tribunal: "TRT15",
-    classe: "Reclamação Trabalhista",
-    tipo: "ACORDAO",
-    canal: "WHATSAPP",
-    ativo: false,
-    ultimoDisparado: "2026-08-24T16:45:00",
-  },
-];
+import { Bell, Plus, Trash2, CheckCircle, Clock, Gavel, FileText, Mail, MessageSquare, BellOff, Loader2 } from "lucide-react";
 
 const tipoLabel: Record<string, { label: string; icon: React.ElementType }> = {
   QUALQUER_MOVIMENTACAO: { label: "Qualquer movimentação", icon: Bell },
@@ -58,16 +25,35 @@ function formatDate(dateStr: string | null) {
 }
 
 export default function AlertasPage() {
-  const [alertas, setAlertas] = useState(alertasMock);
+  const [alertas, setAlertas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  function toggleAlerta(id: string) {
+  useEffect(() => {
+    fetch("/api/alertas")
+      .then((res) => res.json())
+      .then((data) => {
+        setAlertas(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar alertas:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  async function toggleAlerta(id: string, estadoAtual: boolean) {
     setAlertas((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, ativo: !a.ativo } : a))
+      prev.map((a) => (a.id === id ? { ...a, ativo: !estadoAtual } : a))
     );
-  }
-
-  function removerAlerta(id: string) {
-    setAlertas((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await fetch("/api/alertas", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ativo: !estadoAtual }),
+      });
+    } catch (err) {
+      console.error("Erro ao salvar toggle de alerta:", err);
+    }
   }
 
   const ativos = alertas.filter((a) => a.ativo).length;
@@ -79,13 +65,9 @@ export default function AlertasPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-primary">Alertas</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            <span className="font-semibold text-foreground">{ativos}</span> alertas ativos de {alertas.length} configurados
+            <span className="font-semibold text-foreground">{ativos}</span> alertas ativos salvos no Supabase
           </p>
         </div>
-        <button className="btn-accent">
-          <Plus className="w-4 h-4" />
-          Novo Alerta
-        </button>
       </div>
 
       {/* Summary cards */}
@@ -93,8 +75,8 @@ export default function AlertasPage() {
         {[
           { label: "Ativos", value: ativos, color: "bg-green-500" },
           { label: "Pausados", value: alertas.length - ativos, color: "bg-gray-400" },
-          { label: "Disparados hoje", value: 2, color: "bg-amber-500" },
-          { label: "Este mês", value: 18, color: "bg-blue-500" },
+          { label: "Canal Principal", value: "Email", color: "bg-amber-500" },
+          { label: "Frequência", value: "Tempo Real", color: "bg-blue-500" },
         ].map((s, i) => (
           <motion.div
             key={s.label}
@@ -111,76 +93,73 @@ export default function AlertasPage() {
       </div>
 
       {/* Alertas list */}
-      <div className="space-y-3">
-        {alertas.length === 0 && (
-          <div className="card text-center py-16">
-            <BellOff className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="font-medium text-foreground">Nenhum alerta configurado</p>
-            <p className="text-muted-foreground text-sm mt-1">Adicione processos e configure alertas para ser notificado automaticamente.</p>
-          </div>
-        )}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {alertas.length === 0 ? (
+            <div className="card text-center py-16">
+              <BellOff className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+              <p className="font-medium text-foreground">Nenhum alerta configurado</p>
+              <p className="text-muted-foreground text-sm mt-1">Adicione processos para configurar alertas automáticos.</p>
+            </div>
+          ) : (
+            alertas.map((alerta, i) => {
+              const tipo = tipoLabel[alerta.tipo] || tipoLabel.QUALQUER_MOVIMENTACAO;
+              const canal = canalLabel[alerta.canal] || canalLabel.EMAIL;
+              const processo = alerta.processo;
 
-        {alertas.map((alerta, i) => {
-          const tipo = tipoLabel[alerta.tipo];
-          const canal = canalLabel[alerta.canal];
-          return (
-            <motion.div
-              key={alerta.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.07 }}
-              className={`card transition-all duration-200 ${!alerta.ativo ? "opacity-60" : ""}`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className={`badge ${alerta.ativo ? "badge-success" : "badge-primary"}`}>
-                      {alerta.ativo ? <CheckCircle className="w-2.5 h-2.5" /> : <BellOff className="w-2.5 h-2.5" />}
-                      {alerta.ativo ? "Ativo" : "Pausado"}
-                    </span>
-                    <span className="badge badge-primary">{alerta.tribunal}</span>
-                    <span className="badge badge-warning flex items-center gap-1">
-                      <canal.icon className="w-2.5 h-2.5" />
-                      {canal.label}
-                    </span>
+              return (
+                <motion.div
+                  key={alerta.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.07 }}
+                  className={`card transition-all duration-200 ${!alerta.ativo ? "opacity-60" : ""}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className={`badge ${alerta.ativo ? "badge-success" : "badge-primary"}`}>
+                          {alerta.ativo ? <CheckCircle className="w-2.5 h-2.5" /> : <BellOff className="w-2.5 h-2.5" />}
+                          {alerta.ativo ? "Ativo" : "Pausado"}
+                        </span>
+                        <span className="badge badge-primary">{processo?.tribunal || "TJSP"}</span>
+                        <span className="badge badge-warning flex items-center gap-1">
+                          <canal.icon className="w-2.5 h-2.5" />
+                          {canal.label}
+                        </span>
+                      </div>
+
+                      <code className="text-sm font-mono font-semibold text-foreground">{processo?.numeroCnj}</code>
+                      <p className="text-sm text-muted-foreground mt-0.5">{processo?.classe}</p>
+
+                      <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <tipo.icon className="w-3 h-3" />
+                          {tipo.label}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => toggleAlerta(alerta.id, alerta.ativo)}
+                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${alerta.ativo ? "bg-success" : "bg-muted-foreground/30"}`}
+                        title={alerta.ativo ? "Pausar alerta" : "Ativar alerta"}
+                      >
+                        <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${alerta.ativo ? "translate-x-5" : "translate-x-0"}`} />
+                      </button>
+                    </div>
                   </div>
-
-                  <code className="text-sm font-mono font-semibold text-foreground">{alerta.processo}</code>
-                  <p className="text-sm text-muted-foreground mt-0.5">{alerta.classe}</p>
-
-                  <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <tipo.icon className="w-3 h-3" />
-                      {tipo.label}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatDate(alerta.ultimoDisparado)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => toggleAlerta(alerta.id)}
-                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${alerta.ativo ? "bg-success" : "bg-muted-foreground/30"}`}
-                    title={alerta.ativo ? "Pausar alerta" : "Ativar alerta"}
-                  >
-                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ${alerta.ativo ? "translate-x-5" : "translate-x-0"}`} />
-                  </button>
-                  <button
-                    onClick={() => removerAlerta(alerta.id)}
-                    className="p-2 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-muted-foreground"
-                    title="Remover alerta"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* Email config card */}
       <motion.div
@@ -196,10 +175,9 @@ export default function AlertasPage() {
           <div className="flex-1">
             <h3 className="font-semibold text-foreground">Configurações de Email</h3>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Alertas são enviados para <span className="font-medium text-foreground">usuario@email.com</span>
+              Alertas são enviados para <span className="font-medium text-foreground">teste@lexai.com.br</span>
             </p>
           </div>
-          <button className="btn-outline text-sm py-1.5 px-3">Alterar</button>
         </div>
       </motion.div>
     </div>

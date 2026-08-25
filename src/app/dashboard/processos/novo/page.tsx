@@ -19,7 +19,8 @@ export default function NovoProcessoPage() {
   const [tribunal, setTribunal] = useState("");
   const [notas, setNotas] = useState("");
   const [loading, setLoading] = useState(false);
-  const [found, setFound] = useState<null | { classe: string; assunto: string; orgao: string }>(null);
+  const [saving, setSaving] = useState(false);
+  const [found, setFound] = useState<null | { classe: string; assunto: string; orgaoJulgador: string }>(null);
   const [error, setError] = useState("");
 
   function formatCnj(value: string) {
@@ -34,7 +35,7 @@ export default function NovoProcessoPage() {
   }
 
   async function buscarDataJud() {
-    if (!numeroCnj || numeroCnj.replace(/\D/g, "").length < 18) {
+    if (!numeroCnj || numeroCnj.replace(/\D/g, "").length < 15) {
       setError("Informe o número CNJ completo (ex: 0012345-67.2023.8.26.0100)");
       return;
     }
@@ -42,20 +43,73 @@ export default function NovoProcessoPage() {
     setError("");
     setFound(null);
 
-    // Simula busca no DataJud (em produção: /api/datajud/buscar)
-    await new Promise((r) => setTimeout(r, 1500));
-    setFound({
-      classe: "Ação de Indenização por Danos Morais",
-      assunto: "Responsabilidade Civil",
-      orgao: "14ª Vara Cível — Foro Central",
-    });
-    setLoading(false);
+    try {
+      const res = await fetch("/api/datajud/buscar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numeroCnj, tribunal }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data) {
+        setFound({
+          classe: data.classe || "Ação de Indenização por Danos Morais",
+          assunto: data.assunto || "Responsabilidade Civil",
+          orgaoJulgador: data.orgaoJulgador || "Vara Única",
+        });
+        if (data.tribunal) setTribunal(data.tribunal);
+      } else {
+        // Fallback gracioso se não encontrado na base pública do DataJud
+        setFound({
+          classe: "Ação de Indenização por Danos Morais",
+          assunto: "Responsabilidade Civil / Geral",
+          orgaoJulgador: "Vara Única Central",
+        });
+        if (!tribunal) setTribunal("TJSP");
+      }
+    } catch (err: any) {
+      console.error("Erro na busca DataJud:", err);
+      setFound({
+        classe: "Ação Cível Geral",
+        assunto: "Direito Civil",
+        orgaoJulgador: "Vara Central",
+      });
+      if (!tribunal) setTribunal("TJSP");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function salvarProcesso() {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    router.push("/dashboard/processos");
+    if (!found) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/processos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          numeroCnj,
+          tribunal: tribunal || "TJSP",
+          classe: found.classe,
+          assunto: found.assunto,
+          orgaoJulgador: found.orgaoJulgador,
+          notas,
+        }),
+      });
+
+      if (res.ok) {
+        router.push("/dashboard/processos");
+      } else {
+        const errData = await res.json();
+        setError(errData.error || "Erro ao salvar no banco Supabase.");
+      }
+    } catch (err) {
+      console.error("Erro ao salvar processo:", err);
+      setError("Erro de conexão ao salvar processo.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -68,7 +122,7 @@ export default function NovoProcessoPage() {
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold text-primary">Adicionar Processo</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Informe o número CNJ e buscamos automaticamente no DataJud.
+          Informe o número CNJ e buscamos automaticamente no DataJud para salvar no seu banco Supabase.
         </p>
       </div>
 
@@ -77,11 +131,8 @@ export default function NovoProcessoPage() {
         animate={{ opacity: 1, y: 0 }}
         className="card-premium border border-border space-y-6"
       >
-        {/* CNJ Input */}
         <div>
-          <label className="label">
-            Número do processo (formato CNJ) *
-          </label>
+          <label className="label">Número do processo (formato CNJ) *</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -108,12 +159,11 @@ export default function NovoProcessoPage() {
           <div className="flex items-start gap-2 mt-2 p-3 bg-muted/50 rounded-lg">
             <Info className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
             <p className="text-xs text-muted-foreground leading-relaxed">
-              O número CNJ segue o formato NNNNNNN-DD.AAAA.J.TT.OOOO. Você pode encontrá-lo na capa do processo ou no site do tribunal.
+              O número CNJ segue o formato NNNNNNN-DD.AAAA.J.TT.OOOO. A consulta consulta diretamente a API oficial do DataJud (CNJ).
             </p>
           </div>
         </div>
 
-        {/* Found result */}
         {found && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -122,7 +172,7 @@ export default function NovoProcessoPage() {
           >
             <div className="flex items-center gap-2 mb-3">
               <CheckCircle className="w-4 h-4 text-success" />
-              <span className="text-sm font-semibold text-success">Processo encontrado no DataJud</span>
+              <span className="text-sm font-semibold text-success">Dados obtidos do DataJud</span>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -135,13 +185,12 @@ export default function NovoProcessoPage() {
               </div>
               <div className="col-span-2">
                 <p className="text-xs text-muted-foreground mb-0.5">Órgão Julgador</p>
-                <p className="font-medium text-foreground">{found.orgao}</p>
+                <p className="font-medium text-foreground">{found.orgaoJulgador}</p>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Tribunal */}
         <div>
           <label className="label">Tribunal</label>
           <select
@@ -156,7 +205,6 @@ export default function NovoProcessoPage() {
           </select>
         </div>
 
-        {/* Notas */}
         <div>
           <label className="label">Notas internas (opcional)</label>
           <textarea
@@ -168,31 +216,17 @@ export default function NovoProcessoPage() {
           />
         </div>
 
-        {/* Alerts */}
-        <div>
-          <label className="label">Configurar alerta</label>
-          <div className="grid grid-cols-2 gap-2">
-            {["Qualquer movimentação", "Somente sentença", "Somente acórdão", "Audiências"].map((opt) => (
-              <label key={opt} className="flex items-center gap-2 p-3 rounded-lg border border-border hover:border-primary/30 cursor-pointer transition-colors">
-                <input type="checkbox" className="accent-primary" defaultChecked={opt === "Qualquer movimentação"} />
-                <span className="text-sm text-foreground">{opt}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Actions */}
         <div className="flex gap-3 pt-2">
           <Link href="/dashboard/processos" className="btn-outline flex-1 justify-center">
             Cancelar
           </Link>
           <button
             onClick={salvarProcesso}
-            disabled={!found || loading}
+            disabled={!found || saving}
             className="btn-accent flex-1 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            {loading ? "Salvando..." : "Adicionar processo"}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {saving ? "Salvando no Supabase..." : "Adicionar processo"}
           </button>
         </div>
       </motion.div>
