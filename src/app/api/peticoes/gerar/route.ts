@@ -72,6 +72,11 @@ export async function POST(req: Request) {
     const sistemaPrompt = PROMPTS[tipoPeca] || PROMPTS["inicial"];
 
     const userPrompt = `
+REGRAS OBRIGATÓRIAS ANTI-ALUCINAÇÃO:
+- NUNCA invente números de artigos, leis inexistentes, súmulas ou jurisprudência fictícia.
+- Utilize estritamente fundamentação legal baseada na legislação brasileira oficial (Planalto/Gov.br), STF, STJ, TST e fontes como jusbrasil.com.br.
+- Caso mencione tese jurisprudencial, refira-se ao entendimento consolidado dos tribunais superiores ou às súmulas oficiais.
+
 Gere a peça processual com as seguintes informações:
 
 TIPO DE PEÇA: ${tipoPeca.toUpperCase()}
@@ -87,7 +92,7 @@ ${fatos}
 PEDIDOS / OBJETO DA DEMANDA:
 ${pedidos || "Conforme os fatos expostos, requerer o acolhimento da pretensão."}
 
-Gere o texto completo da peça processual, em português do Brasil, com linguagem jurídica formal. Use títulos em maiúsculas e parágrafos numerados. Inclua artigos de lei e jurisprudência relevante quando aplicável.
+Gere o texto completo da peça processual, em português do Brasil, com linguagem jurídica formal. Use títulos em maiúsculas e parágrafos numerados. Inclua artigos de lei oficiais e jurisprudência consolidada pertinente.
 `;
 
     const geminiRes = await fetch(
