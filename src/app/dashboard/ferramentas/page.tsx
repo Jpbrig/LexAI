@@ -126,19 +126,19 @@ function FerramentasContent() {
   ];
 
   const consultasLista = [
-    { id: "cep", name: "Busca CEP & Endereço Completo", icon: Building2, desc: "Logradouro, bairro, município e UF oficiais", inputType: "CEP (8 dígitos)", placeholder: "Digite o CEP (ex: 01310-200 ou 01310200)..." },
-    { id: "buscador", name: "Buscador Processual", icon: Search, desc: "Consulta por Nome, CPF, CNPJ ou OAB em todos os tribunais", inputType: "CNJ / CPF / Nome / OAB", placeholder: "Ex: 1002345-12.2024.8.26.0100 ou CPF/Nome" },
-    { id: "cpf_status", name: "Situação Cadastral de CPF", icon: User, desc: "Regularidade perante a Receita Federal", inputType: "CPF", placeholder: "Digite o CPF (11 dígitos)... Ex: 123.456.789-00" },
-    { id: "empresas", name: "Sociedades e Empresas", icon: Building2, desc: "Quadro de sócios e administradores (QSA)", inputType: "CNPJ", placeholder: "Digite o CNPJ (14 dígitos)... Ex: 00.000.000/0001-91" },
-    { id: "grupo_cnpj", name: "Grupo Econômico de CNPJ", icon: Layers, desc: "Mapeamento de coligadas e filiais", inputType: "CNPJ", placeholder: "Digite o CNPJ da Matriz... Ex: 00.000.000/0001-91" },
-    { id: "veiculo", name: "Dados do Veículo / Renavam", icon: Car, desc: "Histórico, multas, restrições e gravames", inputType: "Placa ou RENAVAM", placeholder: "Digite a Placa (ex: ABC1D23) ou RENAVAM..." },
-    { id: "rastreio_veiculo", name: "Rastreamento de Veículo", icon: Car, desc: "Busca de frota e ativos móveis para execução", inputType: "CPF ou CNPJ do Proprietário", placeholder: "Digite o CPF ou CNPJ para buscar a frota..." },
-    { id: "cnh", name: "Dados da CNH", icon: CreditCard, desc: "Pontuação, suspensões e categoria", inputType: "CPF ou Nº da CNH", placeholder: "Digite o CPF do condutor ou número da CNH..." },
-    { id: "marcas", name: "Marcas e Patentes (INPI)", icon: Award, desc: "Pesquisa de marcas registradas e patentes", inputType: "Nome da Marca ou Processo INPI", placeholder: "Digite o nome da marca ou nº do processo INPI..." },
-    { id: "credito", name: "Restrição de Crédito", icon: CreditCard, desc: "Negativações nos Cartórios de Protesto (IEPTB)", inputType: "CPF ou CNPJ", placeholder: "Digite o CPF ou CNPJ para consulta de protestos..." },
-    { id: "localizacao", name: "Localização de Devedores", icon: User, desc: "Busca de endereços e telefones atualizados", inputType: "CPF, CNPJ ou Nome Completo", placeholder: "Digite o CPF, CNPJ ou Nome do Devedor..." },
-    { id: "relacionamentos", name: "Relacionamentos & Sócios", icon: Users, desc: "Vínculos societários e parentescos", inputType: "CPF ou Nome do Sócio", placeholder: "Digite o CPF ou Nome do Investigado..." },
-    { id: "profissionais", name: "Dados Profissionais", icon: Briefcase, desc: "Vínculos empregatícios e registro de classe", inputType: "CPF ou Registro (OAB, CRM, etc)", placeholder: "Digite o CPF ou Registro Profissional..." },
+    { id: "cep", name: "Busca CEP & Endereço Completo", icon: Building2, desc: "Logradouro, bairro, município e UF oficiais", inputType: "CEP (8 dígitos)", placeholder: "Digite o CEP (ex: 01310-200 ou 01310200)...", isFree: true },
+    { id: "buscador", name: "Buscador Processual", icon: Search, desc: "Consulta por Nome, CPF, CNPJ ou OAB em todos os tribunais", inputType: "CNJ / CPF / Nome / OAB", placeholder: "Ex: 1002345-12.2024.8.26.0100 ou CPF/Nome", isFree: true },
+    { id: "cpf_status", name: "Situação Cadastral de CPF", icon: User, desc: "Regularidade perante a Receita Federal", inputType: "CPF", placeholder: "Digite o CPF (11 dígitos)... Ex: 123.456.789-00", isFree: true },
+    { id: "empresas", name: "Sociedades e Empresas", icon: Building2, desc: "Quadro de sócios e administradores (QSA)", inputType: "CNPJ", placeholder: "Digite o CNPJ (14 dígitos)... Ex: 00.000.000/0001-91", isFree: true },
+    { id: "grupo_cnpj", name: "Grupo Econômico de CNPJ", icon: Layers, desc: "Mapeamento de coligadas e filiais", inputType: "CNPJ", placeholder: "Digite o CNPJ da Matriz... Ex: 00.000.000/0001-91", isFree: true },
+    { id: "veiculo", name: "Dados do Veículo / Renavam", icon: Car, desc: "Histórico, multas, restrições e gravames", inputType: "Placa ou RENAVAM", placeholder: "Digite a Placa (ex: ABC1D23) ou RENAVAM...", isFree: false, provider: "SENATRAN / SINESP / Infosimples" },
+    { id: "rastreio_veiculo", name: "Rastreamento de Veículo", icon: Car, desc: "Busca de frota e ativos móveis para execução", inputType: "CPF ou CNPJ do Proprietário", placeholder: "Digite o CPF ou CNPJ para buscar a frota...", isFree: false, provider: "SENATRAN / DirectData" },
+    { id: "cnh", name: "Dados da CNH", icon: CreditCard, desc: "Pontuação, suspensões e categoria", inputType: "CPF ou Nº da CNH", placeholder: "Digite o CPF do condutor ou número da CNH...", isFree: false, provider: "SENATRAN / DETRAN" },
+    { id: "marcas", name: "Marcas e Patentes (INPI)", icon: Award, desc: "Pesquisa de marcas registradas e patentes", inputType: "Nome da Marca ou Processo INPI", placeholder: "Digite o nome da marca ou nº do processo INPI...", isFree: false, provider: "INPI / Infosimples" },
+    { id: "credito", name: "Restrição de Crédito", icon: CreditCard, desc: "Negativações nos Cartórios de Protesto (IEPTB)", inputType: "CPF ou CNPJ", placeholder: "Digite o CPF ou CNPJ para consulta de protestos...", isFree: false, provider: "IEPTB Cartórios" },
+    { id: "localizacao", name: "Localização de Devedores", icon: User, desc: "Busca de endereços e telefones atualizados", inputType: "CPF, CNPJ ou Nome Completo", placeholder: "Digite o CPF, CNPJ ou Nome do Devedor...", isFree: false, provider: "Serpro PGFN / DirectData" },
+    { id: "relacionamentos", name: "Relacionamentos & Sócios", icon: Users, desc: "Vínculos societários e parentescos", inputType: "CPF ou Nome do Sócio", placeholder: "Digite o CPF ou Nome do Investigado...", isFree: true },
+    { id: "profissionais", name: "Dados Profissionais", icon: Briefcase, desc: "Vínculos empregatícios e registro de classe", inputType: "CPF ou Registro (OAB, CRM, etc)", placeholder: "Digite o CPF ou Registro Profissional...", isFree: false, provider: "Conselhos de Classe" },
   ];
 
   const outrosLista = [
@@ -383,15 +383,48 @@ function FerramentasContent() {
           </div>
 
           <div className="card space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
               <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
                 <Search className="w-5 h-5 text-amber-500" />
                 {consultasLista.find((c) => c.id === selectedConsulta)?.name}
               </h2>
-              <span className="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3 py-1 rounded-full">
-                Identificador: {consultasLista.find((c) => c.id === selectedConsulta)?.inputType}
-              </span>
+              <div className="flex items-center gap-2">
+                {consultasLista.find((c) => c.id === selectedConsulta)?.isFree ? (
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                    API Gratuita (Livre)
+                  </span>
+                ) : (
+                  <span className="bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                    Requer Credencial Privada / API
+                  </span>
+                )}
+                <span className="bg-slate-100 text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                  Identificador: {consultasLista.find((c) => c.id === selectedConsulta)?.inputType}
+                </span>
+              </div>
             </div>
+
+            {!consultasLista.find((c) => c.id === selectedConsulta)?.isFree && (
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-slate-900">
+                      Esta consulta requer login, senha ou chave de API ({consultasLista.find((c) => c.id === selectedConsulta)?.provider})
+                    </p>
+                    <p className="text-[11px] text-slate-600 mt-0.5">
+                      Para realizar buscas reais de veículos, Serpro PGFN ou INPI, cadastre suas chaves nas Configurações.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href="/dashboard/configuracoes"
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] px-3 py-1.5 rounded-lg flex-shrink-0 transition-all shadow-sm"
+                >
+                  Configurar Chaves
+                </a>
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
