@@ -811,8 +811,8 @@ Usuário: ${texto}`;
   ];
 
   const outrosLista = [
-    { id: "novos_clientes", name: "Captação de Novos Clientes", icon: Users, desc: "Conexão com potenciais clientes jurídicos" },
-    { id: "ia_sites", name: "I.A. Criador de Sites para Escritórios", icon: Globe, desc: "Crie o site do seu escritório em 5 minutos" },
+    { id: "novos_clientes", name: "Captação de Novos Clientes (Em Breve)", icon: Users, desc: "Conexão com potenciais clientes jurídicos" },
+    { id: "ia_sites", name: "I.A. Criador de Sites para Escritórios (Em Breve)", icon: Globe, desc: "Crie o site do seu escritório em 5 minutos" },
   ];
 
   return (
@@ -1199,14 +1199,21 @@ Usuário: ${texto}`;
       {activeTab === "outros" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {outrosLista.map((item) => (
-            <div key={item.id} className="card hover:border-amber-500/50 hover:shadow-md transition-all space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center">
-                <item.icon className="w-5 h-5" />
+            <div key={item.id} className="card hover:border-amber-500/50 hover:shadow-md transition-all space-y-3 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="w-10 h-10 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center">
+                  <item.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">{item.name.replace(" (Em Breve)", "")}</h3>
+                  <span className="text-[10px] font-extrabold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full inline-block mt-1">
+                    Em Breve
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
               </div>
-              <h3 className="font-bold text-slate-900 text-sm">{item.name}</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">{item.desc}</p>
-              <button className="btn-outline text-xs w-full justify-center py-2">
-                Acessar Recurso
+              <button disabled className="btn-outline text-xs w-full justify-center py-2 opacity-60 cursor-not-allowed bg-slate-50">
+                🔒 Em Breve
               </button>
             </div>
           ))}
