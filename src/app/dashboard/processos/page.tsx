@@ -82,12 +82,13 @@ export default function ProcessosPage() {
 
       {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="relative flex-1 flex items-center">
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 pointer-events-none z-10" />
           <input
             type="text"
             placeholder="Buscar por número CNJ, classe ou tribunal..."
-            className="input pl-9"
+            className="input text-sm"
+            style={{ paddingLeft: "2.75rem" }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />

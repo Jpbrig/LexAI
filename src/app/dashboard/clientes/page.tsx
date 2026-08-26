@@ -182,11 +182,12 @@ export default function ClientesPage() {
 
       {/* Barra de Pesquisa */}
       <div className="card p-4">
-        <div className="relative">
-          <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-3" />
+        <div className="relative flex items-center">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none z-10" />
           <input
             type="text"
-            className="input pl-10 text-sm"
+            className="input text-sm"
+            style={{ paddingLeft: "2.75rem" }}
             placeholder="Buscar cliente por nome, CPF/CNPJ ou e-mail..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
