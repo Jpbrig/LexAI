@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -24,41 +24,28 @@ type EventoAgenda = {
 };
 
 export default function AgendaPage() {
-  const [eventos, setEventos] = useState<EventoAgenda[]>([
-    {
-      id: "ev_1",
-      titulo: "Contestação — Ação Trabalhista",
-      tipo: "Prazo Processual",
-      data: "2026-08-28",
-      hora: "23:59",
-      processo: "0012345-67.2023.8.26.0100",
-      cliente: "Carlos Eduardo Silva",
-      status: "Pendente",
-      prioridade: "Alta",
-    },
-    {
-      id: "ev_2",
-      titulo: "Audiência de Conciliação Virtual",
-      tipo: "Audiência",
-      data: "2026-08-30",
-      hora: "14:30",
-      processo: "0098765-43.2022.4.03.6100",
-      cliente: "Empresa XYZ S/A",
-      status: "Pendente",
-      prioridade: "Alta",
-    },
-    {
-      id: "ev_3",
-      titulo: "Reunião de Alinhamento de Contrato",
-      tipo: "Reunião",
-      data: "2026-09-01",
-      hora: "10:00",
-      processo: "N/A",
-      cliente: "Mariana Souza Santos",
-      status: "Pendente",
-      prioridade: "Média",
-    },
-  ]);
+  const [eventos, setEventos] = useState<EventoAgenda[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  function carregarEventos() {
+    setLoading(true);
+    fetch("/api/agenda")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setEventos(data);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar agenda:", err);
+        setLoading(false);
+      });
+  }
+
+  useEffect(() => {
+    carregarEventos();
+  }, []);
 
   // Modo de visualização principal: "lista" | "dia" | "mes" | "ano"
   const [modoView, setModoView] = useState<"lista" | "dia" | "mes" | "ano">("mes");
@@ -106,36 +93,48 @@ export default function AgendaPage() {
     );
   }
 
-  function handleSalvarEvento(e: React.FormEvent) {
+  async function handleSalvarEvento(e: React.FormEvent) {
     e.preventDefault();
     if (!titulo || !data) return;
 
-    const novo: EventoAgenda = {
-      id: `ev_${Date.now()}`,
-      titulo,
-      tipo,
-      data,
-      hora,
-      processo: processo || "N/A",
-      cliente: cliente || "Geral",
-      status: "Pendente",
-      prioridade,
-    };
+    try {
+      const res = await fetch("/api/agenda", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo, tipo, data, hora, processo, cliente, prioridade }),
+      });
 
-    setEventos([novo, ...eventos]);
-    setShowModalNovo(false);
-    setTitulo("");
-    setData("");
-    setProcesso("");
-    setCliente("");
+      if (res.ok) {
+        carregarEventos();
+        setShowModalNovo(false);
+        setTitulo("");
+        setData("");
+        setProcesso("");
+        setCliente("");
+      }
+    } catch (err) {
+      console.error("Erro ao salvar evento:", err);
+    }
   }
 
-  function toggleStatus(id: string) {
-    setEventos(
-      eventos.map((e) =>
-        e.id === id ? { ...e, status: e.status === "Pendente" ? "Concluído" : "Pendente" } : e
-      )
-    );
+  async function toggleStatus(id: string) {
+    const ev = eventos.find((e) => e.id === id);
+    if (!ev) return;
+    const novoStatus = ev.status === "Pendente" ? "Concluído" : "Pendente";
+
+    try {
+      await fetch("/api/agenda", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: novoStatus }),
+      });
+
+      setEventos(
+        eventos.map((e) => (e.id === id ? { ...e, status: novoStatus } : e))
+      );
+    } catch (err) {
+      console.error("Erro ao atualizar status:", err);
+    }
   }
 
   // Navegação de datas

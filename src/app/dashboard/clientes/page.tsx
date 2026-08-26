@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Users, Search, Plus, Mail, Phone, MapPin, FileText, DollarSign, Calendar, ChevronRight, CheckCircle2 } from "lucide-react";
 
 type ProcessoVinculado = {
@@ -26,62 +26,43 @@ type Cliente = {
 };
 
 export default function ClientesPage() {
-  const [clientes, setClientes] = useState<Cliente[]>([
-    {
-      id: "cli_1",
-      nome: "Carlos Eduardo Silva",
-      tipo: "PF",
-      documento: "123.456.789-00",
-      email: "carlos.silva@email.com",
-      telefone: "(11) 98765-4321",
-      cidade: "São Paulo / SP",
-      processosCount: 2,
-      listaProcessos: [
-        { numeroCnj: "0012345-67.2023.8.26.0100", tribunal: "TJSP", acao: "Ação Trabalhista — Reclamatória" },
-        { numeroCnj: "1054321-99.2024.8.26.0100", tribunal: "TJSP", acao: "Revisão Contratual" }
-      ],
-      totalPago: 11700,
-      status: "Ativo",
-      dataCadastro: "15/01/2026",
-      observacoes: "Cliente em ação trabalhista e revisão contratual. Preferência de contato por WhatsApp."
-    },
-    {
-      id: "cli_2",
-      nome: "Empresa XYZ S/A",
-      tipo: "PJ",
-      documento: "12.345.678/0001-99",
-      email: "juridico@xyzsa.com.br",
-      telefone: "(11) 3344-5566",
-      cidade: "Campinas / SP",
-      processosCount: 5,
-      listaProcessos: [
-        { numeroCnj: "0098765-43.2022.4.03.6100", tribunal: "TRF3", acao: "Execução Fiscal Federal" },
-        { numeroCnj: "5001234-12.2023.8.26.0114", tribunal: "TJSP", acao: "Cobrança Indenizatória" },
-        { numeroCnj: "0004567-89.2024.5.02.0001", tribunal: "TRT2", acao: "Ação Trabalhista Plural" }
-      ],
-      totalPago: 45000,
-      status: "Ativo",
-      dataCadastro: "10/11/2025",
-      observacoes: "Contrato de assessoria mensalista (Retainer). Faturamento todo dia 05."
-    },
-    {
-      id: "cli_3",
-      nome: "Mariana Souza Santos",
-      tipo: "PF",
-      documento: "987.654.321-11",
-      email: "mariana.santos@email.com",
-      telefone: "(21) 99887-6655",
-      cidade: "Rio de Janeiro / RJ",
-      processosCount: 1,
-      listaProcessos: [
-        { numeroCnj: "0801234-55.2024.8.19.0001", tribunal: "TJRJ", acao: "Ação Indenizatória (Extravio de Bagagem)" }
-      ],
-      totalPago: 3500,
-      status: "Ativo",
-      dataCadastro: "02/02/2026",
-      observacoes: "Ação indenizatória contra cia aérea (extravio de bagagem)."
-    }
-  ]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  function carregarClientes() {
+    setLoading(true);
+    fetch("/api/clientes")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          const formatados = data.map((c: any) => ({
+            id: c.id,
+            nome: c.nome,
+            tipo: c.tipo as "PF" | "PJ",
+            documento: c.documento,
+            email: c.email,
+            telefone: c.telefone,
+            cidade: c.cidade,
+            processosCount: 0,
+            listaProcessos: [],
+            totalPago: c.totalPago || 0,
+            status: c.status as "Ativo" | "Inativo",
+            dataCadastro: new Date(c.createdAt).toLocaleDateString("pt-BR"),
+            observacoes: c.observacoes || "",
+          }));
+          setClientes(formatados);
+        }
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Erro ao buscar clientes:", err);
+        setLoading(false);
+      });
+  }
+
+  useEffect(() => {
+    carregarClientes();
+  }, []);
 
   const [busca, setBusca] = useState("");
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
@@ -96,35 +77,30 @@ export default function ClientesPage() {
   const [cidade, setCidade] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
-  function handleSalvarCliente(e: React.FormEvent) {
+  async function handleSalvarCliente(e: React.FormEvent) {
     e.preventDefault();
     if (!nome || !documento) return;
 
-    const novo: Cliente = {
-      id: `cli_${Date.now()}`,
-      nome,
-      tipo,
-      documento,
-      email,
-      telefone,
-      cidade: cidade || "São Paulo / SP",
-      processosCount: 0,
-      listaProcessos: [],
-      totalPago: 0,
-      status: "Ativo",
-      dataCadastro: new Date().toLocaleDateString("pt-BR"),
-      observacoes
-    };
+    try {
+      const res = await fetch("/api/clientes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, tipo, documento, email, telefone, cidade, observacoes }),
+      });
 
-    setClientes([novo, ...clientes]);
-    setShowModalNovo(false);
-    // Limpa form
-    setNome("");
-    setDocumento("");
-    setEmail("");
-    setTelefone("");
-    setCidade("");
-    setObservacoes("");
+      if (res.ok) {
+        carregarClientes();
+        setShowModalNovo(false);
+        setNome("");
+        setDocumento("");
+        setEmail("");
+        setTelefone("");
+        setCidade("");
+        setObservacoes("");
+      }
+    } catch (err) {
+      console.error("Erro ao salvar cliente:", err);
+    }
   }
 
   const clientesFiltrados = clientes.filter(
