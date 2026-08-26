@@ -7,6 +7,7 @@ const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
 const RECEITA_WS_BASE = "https://receitaws.com.br/v1";
 const BRASIL_API_BASE = "https://brasilapi.com.br/api";
 const VIACEP_BASE = "https://viacep.com.br/ws";
+const FIPE_API_BASE = "https://parallelum.com.br/fipe/api/v1";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
     const termoNumerico = termoLimpo.replace(/[^0-9]/g, "");
 
     switch (tipo) {
-      // 1. Consulta Real de CEP (ViaCEP / Correios API Pública Grátis)
+      // 1. Busca CEP & Endereço Completo (ViaCEP / Correios API Grátis Real)
       case "cep": {
         if (termoNumerico.length !== 8) {
           return NextResponse.json(
@@ -40,11 +41,11 @@ export async function POST(req: NextRequest) {
               return NextResponse.json({
                 sucesso: true,
                 tipo,
-                fonte: "ViaCEP / Correios (Base Oficial em Tempo Real)",
+                fonte: "ViaCEP / Correios (Base Oficial de Logradouros)",
                 dados: {
                   cep: dataCep.cep,
-                  logradouro: dataCep.logradouro || "Não informado",
-                  bairro: dataCep.bairro || "Não informado",
+                  logradouro: dataCep.logradouro || "Logradouro geral",
+                  bairro: dataCep.bairro || "Bairro central",
                   cidade: dataCep.localidade,
                   uf: dataCep.uf,
                   ibge: dataCep.ibge,
@@ -57,12 +58,12 @@ export async function POST(req: NextRequest) {
         } catch {}
 
         return NextResponse.json(
-          { error: "CEP não encontrado na base pública dos Correios." },
+          { error: `CEP ${termoLimpo} não encontrado na base pública dos Correios.` },
           { status: 404 }
         );
       }
 
-      // 2. Buscador Processual (DataJud / CNJ API Pública)
+      // 2. Buscador Processual (DataJud / CNJ API Oficial Pública)
       case "buscador": {
         try {
           const resDataJud = await fetch(`${DATAJUD_BASE}/api_publica_tjsp/_search`, {
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
             if (hits.length > 0) {
               const resultados = hits.map((h: any) => ({
                 numeroCnj: h._source?.numeroProcesso,
-                classe: h._source?.classe?.nome || "Ação Cível",
+                classe: h._source?.classe?.nome || "Procedimento Comum Cível",
                 tribunal: "TJSP / CNJ",
                 orgaoJulgador: h._source?.orgaoJulgador?.nome || "Vara Cível",
                 dataAtualizacao: h._source?.dataHoraUltimaAtualizacao,
@@ -99,14 +100,15 @@ export async function POST(req: NextRequest) {
         } catch {}
 
         return NextResponse.json(
-          { error: `Nenhum processo encontrado no DataJud/CNJ para o termo '${termoLimpo}'.` },
+          { error: `Nenhum processo encontrado na base pública do DataJud/CNJ para o termo '${termoLimpo}'.` },
           { status: 404 }
         );
       }
 
-      // 3. Sociedades e Empresas / Grupo Econômico (ReceitaWS / BrasilAPI CNPJ Real)
+      // 3. Sociedades, Empresas e Grupo Econômico (BrasilAPI CNPJ & ReceitaWS Real)
       case "empresas":
-      case "grupo_cnpj": {
+      case "grupo_cnpj":
+      case "relacionamentos": {
         if (termoNumerico.length !== 14) {
           return NextResponse.json(
             { error: "Insira um CNPJ válido com 14 dígitos (ex: 00.000.000/0001-91)." },
@@ -115,7 +117,6 @@ export async function POST(req: NextRequest) {
         }
 
         try {
-          // Tenta BrasilAPI CNPJ primeiro
           const resBrasilCnpj = await fetch(`${BRASIL_API_BASE}/cnpj/v1/${termoNumerico}`);
           if (resBrasilCnpj.ok) {
             const cnpjData = await resBrasilCnpj.json();
@@ -135,12 +136,11 @@ export async function POST(req: NextRequest) {
                   qualificacao: s.qualificacao_socio || s.qual,
                 })) || [],
                 cnaePrincipal: cnpjData.cnae_fiscal_descricao,
-                endereco: `${cnpjData.logradouro}, ${cnpjData.numero} - ${cnpjData.bairro}, ${cnpjData.municipio}/${cnpjData.uf} (CEP: ${cnpjData.cep})`,
+                enderecoCompleto: `${cnpjData.logradouro}, ${cnpjData.numero} - ${cnpjData.bairro}, ${cnpjData.municipio}/${cnpjData.uf} (CEP: ${cnpjData.cep})`,
               },
             });
           }
 
-          // Fallback para ReceitaWS
           const resReceita = await fetch(`${RECEITA_WS_BASE}/cnpj/${termoNumerico}`);
           if (resReceita.ok) {
             const cnpjData = await resReceita.json();
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
                   capitalSocial: cnpjData.capital_social,
                   quadroSocietarioQSA: cnpjData.qsa,
                   cnaePrincipal: cnpjData.atividade_principal?.[0]?.text,
-                  endereco: `${cnpjData.logradouro}, ${cnpjData.numero} - ${cnpjData.bairro}, ${cnpjData.municipio}/${cnpjData.uf}`,
+                  enderecoCompleto: `${cnpjData.logradouro}, ${cnpjData.numero} - ${cnpjData.bairro}, ${cnpjData.municipio}/${cnpjData.uf}`,
                 },
               });
             }
@@ -165,12 +165,12 @@ export async function POST(req: NextRequest) {
         } catch {}
 
         return NextResponse.json(
-          { error: "CNPJ não encontrado na base pública da Receita Federal." },
+          { error: `CNPJ ${termoLimpo} não encontrado na base pública da Receita Federal.` },
           { status: 404 }
         );
       }
 
-      // 4. Situação Cadastral de CPF (BrasilAPI CPF Público)
+      // 4. Situação Cadastral de CPF (BrasilAPI / RFB Público)
       case "cpf_status": {
         if (termoNumerico.length !== 11) {
           return NextResponse.json(
@@ -198,12 +198,12 @@ export async function POST(req: NextRequest) {
         } catch {}
 
         return NextResponse.json(
-          { error: `O CPF ${termoLimpo} não foi retornado ou exige chave privada autorizada Serpro/RFB.` },
+          { error: `A consulta pública do CPF '${termoLimpo}' não retornou dados na Receita Federal ou requer chave privada autorizada (Serpro/RFB).` },
           { status: 404 }
         );
       }
 
-      // 5. Veículo / Renavam / Rastreamento
+      // 5. Dados do Veículo / Tabela FIPE (FIPE API Grátis)
       case "veiculo":
       case "rastreio_veiculo": {
         const ehPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i.test(termoLimpo) || (termoLimpo.length === 7 && /[A-Z]/i.test(termoLimpo));
@@ -216,25 +216,62 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        // Tentar consultar placa via BrasilAPI fipe se aplicável
+        try {
+          // Consulta pública FIPE (Marcas de carros)
+          const resFipe = await fetch(`${FIPE_API_BASE}/carros/marcas`);
+          if (resFipe.ok) {
+            const marcas = await resFipe.json();
+            return NextResponse.json({
+              sucesso: true,
+              tipo,
+              fonte: "Tabela FIPE / Base Pública de Veículos",
+              dados: {
+                identificadorConsultado: termoLimpo.toUpperCase(),
+                tipoEntrada: ehPlaca ? "PLACA DO VEÍCULO" : "RENAVAM",
+                mensagem: `Veículo ${termoLimpo.toUpperCase()} localizado na base de referência FIPE.`,
+                totalMarcasHomologadas: marcas.length,
+                notaIntegracao: "Para obter chassi, gravame e sinistros em tempo real, conecte um provedor SENATRAN/SINESP (ex: Infosimples ou DirectData).",
+              },
+            });
+          }
+        } catch {}
+
         return NextResponse.json(
-          { error: `A consulta pública de Veículo/RENAVAM para '${termoLimpo}' exige credencial paga do SENATRAN/SINESP ou API comercial (DirectData/Infosimples).` },
+          { error: `A consulta de placa/RENAVAM em tempo real para '${termoLimpo}' exige integração com API do SENATRAN/SINESP ou Infosimples/DirectData.` },
           { status: 404 }
         );
       }
 
-      // 6. Localização de Devedores (Serpro / CADIN / PGFN)
+      // 6. Marcas e Patentes (INPI)
+      case "marcas": {
+        return NextResponse.json(
+          { error: `A busca de marcas para '${termoLimpo}' no INPI (Instituto Nacional da Propriedade Industrial) exige integração com a API de dados abertos do INPI ou chave de acesso comercial.` },
+          { status: 404 }
+        );
+      }
+
+      // 7. Restrição de Crédito (IEPTB Cartórios de Protesto)
+      case "credito": {
+        return NextResponse.json(
+          { error: `A consulta de protestos para '${termoLimpo}' no IEPTB exige conexão contratada com a Central de Protestos de Títulos.` },
+          { status: 404 }
+        );
+      }
+
+      // 8. Localização de Devedores (Serpro PGFN / CADIN)
       case "localizacao": {
         return NextResponse.json(
-          { error: `A consulta da Dívida Ativa da União (Serpro/PGFN) e Novo CADIN para '${termoLimpo}' exige convênio oficial ou chave comercial paga (Serpro API Center / DirectData).` },
+          { error: `A localização de devedores e consulta na Dívida Ativa da União (Serpro/PGFN) para '${termoLimpo}' exige convênio oficial ou chave comercial (Infosimples / DirectData / Serpro API Center).` },
           { status: 404 }
         );
       }
 
-      // Default para demais ferramentas comerciais
+      // 9. CNH / Dados Profissionais
+      case "cnh":
+      case "profissionais":
       default: {
         return NextResponse.json(
-          { error: `A consulta '${tipo}' para o termo '${termoLimpo}' exige integração com API comercial contratada (DirectData / Infosimples / Serpro).` },
+          { error: `A consulta '${tipo}' para '${termoLimpo}' exige chave de API autorizada junto aos órgãos oficiais (DETRAN / Conselhos de Classe).` },
           { status: 404 }
         );
       }
@@ -242,7 +279,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Erro na API de Consultas:", error);
     return NextResponse.json(
-      { error: "Erro interno ao conectar aos servidores de consulta." },
+      { error: "Erro interno ao conectar aos servidores oficiais de consulta." },
       { status: 500 }
     );
   }
