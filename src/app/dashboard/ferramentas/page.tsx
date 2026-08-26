@@ -505,6 +505,30 @@ Usuário: ${texto}`;
           ],
         };
       }
+      case "debito_judicial": {
+        // Atualização de Débitos & Pensão (Art. 524 CPC)
+        const taxaJurosMensal = tx > 0 ? tx / 100 : 0.01; // Default 1% a.m.
+        const correcaoAcumulada = val * (0.0045 * m); // Est. inflação acumulada
+        const valorCorrigido = val + correcaoAcumulada;
+        const jurosMoraAcumulados = valorCorrigido * (taxaJurosMensal * m);
+        const subtotal = valorCorrigido + jurosMoraAcumulados;
+        const multaArt523 = subtotal * 0.10; // 10% Multa Art. 523 CPC
+        const honorariosArt523 = subtotal * 0.10; // 10% Honorários Art. 523 CPC
+        const valorTotalFinal = subtotal + multaArt523 + honorariosArt523;
+
+        return {
+          titulo: "Memória de Cálculo Processual Atualizada (Art. 524 CPC)",
+          resultado: valorTotalFinal,
+          detalhes: [
+            { rotulo: "Valor Original do Débito / Pensão", valor: val },
+            { rotulo: `Correção Monetária Acumulada (${m} meses)`, valor: correcaoAcumulada },
+            { rotulo: `Juros de Mora (${(taxaJurosMensal * 100).toFixed(1)}% a.m. por ${m} meses)`, valor: jurosMoraAcumulados },
+            { rotulo: "Subtotal Atualizado com Juros & Correção", valor: subtotal },
+            { rotulo: "Multa de 10% (Art. 523, §1º do CPC)", valor: multaArt523 },
+            { rotulo: "Honorários de Execução de 10% (Art. 523 CPC)", valor: honorariosArt523 },
+          ],
+        };
+      }
       case "pasep": {
         // PASEP Servidor Público Pré-88 (Fator de Correção + Juros Amortizados)
         const diferencaPasep = val * (tx / 100) * m;
@@ -761,6 +785,16 @@ Usuário: ${texto}`;
       labelValor: "Valor Atual do Aluguel (R$)",
       labelTaxa: "Índice de Reajuste Acumulado (%)",
       labelMeses: "Período do Contrato (Meses)",
+    },
+    {
+      id: "debito_judicial",
+      name: "Atualização de Débitos & Pensão (Art. 524 CPC)",
+      icon: DollarSign,
+      desc: "Memória de cálculo judicial com correção, juros e multa",
+      info: "Atualização monetária discriminada de parcelas em atraso (pensão alimentícia, execuções judiciais, notas promissórias e títulos), aplicando correção por índices oficiais (INPC/IPCA/IGPM), juros de mora (1% a.m.) e multa de 10% do Art. 523 §1º do CPC.",
+      labelValor: "Valor da Parcela em Atraso (R$)",
+      labelTaxa: "Juros de Mora (% a.m. - Padrão 1%)",
+      labelMeses: "Meses de Atraso Acumulados",
     },
     {
       id: "pensao",
