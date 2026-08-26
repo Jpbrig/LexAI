@@ -29,8 +29,14 @@ import {
 const features = [
   {
     icon: UserCheck,
-    title: "Busca Agregada Jusbrasil por CPF/Nome",
-    desc: "Varra todos os processos judiciais vinculados ao CPF ou Nome de um cliente de uma só vez.",
+    title: "CRM & Fichas de Clientes",
+    desc: "Cadastro completo de clientes (PF/PJ), histórico de atendimentos, rentabilidade e processos vinculados.",
+    color: "bg-amber-500 text-white",
+  },
+  {
+    icon: Clock,
+    title: "Agenda & Prazos em Dias Úteis",
+    desc: "Controle de audiências e prazos processuais com calculadora automática em dias úteis (CPC Art. 219 / CLT).",
     color: "bg-slate-900 text-amber-400",
   },
   {
@@ -41,27 +47,21 @@ const features = [
   },
   {
     icon: Brain,
-    title: "Resumo Inteligente com IA Jurídica",
-    desc: "Nossa IA analisa sentenças e acórdãos extensos citando as fontes de lei e oferecendo a melhor estratégia recursal.",
+    title: "Gerador de Petições & Assistente IA",
+    desc: "Elabore Petições Iniciais, Contestações e Recursos com fundamentação legal oficial via Google Gemini 1.5 Flash.",
     color: "bg-slate-900 text-amber-400",
   },
   {
-    icon: Calculator,
-    title: "Cálculos Trabalhistas Instantâneos",
-    desc: "Simule rescisões contratuais (CLT) com férias, 13º, aviso prévio e multa de 40% do FGTS em menos de 10 segundos.",
+    icon: Shield,
+    title: "Assinatura Eletrônica (Selo ICP-Brasil)",
+    desc: "Dispare contratos e procurações para assinatura digital com validade legal via ClicSign API.",
     color: "bg-amber-500 text-white",
   },
   {
     icon: FileText,
-    title: "Gerador de Procuração Ad Judicia",
-    desc: "Gere e imprima procurações preenchidas automaticamente no padrão A4 oficial prontas para assinatura.",
+    title: "Vade Mecum Digital & Legislação",
+    desc: "Consulta direta à CF/88, CPC, CLT, Código Penal, Civil e CDC integrados ao portal oficial do Planalto.",
     color: "bg-slate-900 text-amber-400",
-  },
-  {
-    icon: Bot,
-    title: "IA Jurídica Especializada",
-    desc: "Elabore minutas, atos societários, análises de risco processual e teses com inteligência artificial.",
-    color: "bg-amber-500 text-white",
   },
 ];
 

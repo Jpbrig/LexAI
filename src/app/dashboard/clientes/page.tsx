@@ -248,8 +248,14 @@ export default function ClientesPage() {
 
       {/* Modal / Drawer de Detalhes do Cliente */}
       {selectedCliente && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end">
-          <div className="bg-white w-full max-w-lg h-full p-6 overflow-y-auto space-y-6 shadow-2xl animate-fade-in">
+        <div
+          onClick={() => setSelectedCliente(null)}
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-lg h-full p-6 overflow-y-auto space-y-6 shadow-2xl animate-fade-in cursor-default"
+          >
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div>
                 <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
