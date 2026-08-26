@@ -126,18 +126,18 @@ function FerramentasContent() {
   ];
 
   const consultasLista = [
-    { id: "buscador", name: "Buscador Processual", icon: Search, desc: "Consulta por Nome, CPF, CNPJ ou OAB em todos os tribunais" },
-    { id: "localizacao", name: "Localização de Devedores", icon: User, desc: "Busca de endereços e telefones atualizados" },
-    { id: "relacionamentos", name: "Relacionamentos & Socios", icon: Users, desc: "Vínculos societários e parentescos" },
-    { id: "veiculo", name: "Dados do Veículo / Renavam", icon: Car, desc: "Histórico, multas, restrições e gravames" },
-    { id: "empresas", name: "Sociedades e Empresas", icon: Building2, desc: "Quadro de sócios e administradores (QSA)" },
-    { id: "credito", name: "Restrição de Crédito", icon: CreditCard, desc: "Negativações no Serasa/SPC e protestos" },
-    { id: "marcas", name: "Marcas e Patentes (INPI)", icon: Award, desc: "Pesquisa de marcas registradas e patentes" },
-    { id: "profissionais", name: "Dados Profissionais", icon: Briefcase, desc: "Vínculos empregatícios e registro de classe" },
-    { id: "grupo_cnpj", name: "Grupo Econômico de CNPJ", icon: Layers, desc: "Mapeamento de coligadas e filiais" },
-    { id: "cpf_status", name: "Situação Cadastral de CPF", icon: User, desc: "Regularidade perante a Receita Federal" },
-    { id: "rastreio_veiculo", name: "Rastreamento de Veículo", icon: Car, desc: "Busca de frota e ativos móveis para execução" },
-    { id: "cnh", name: "Dados da CNH", icon: CreditCard, desc: "Pontuação, suspensões e categoria" },
+    { id: "buscador", name: "Buscador Processual", icon: Search, desc: "Consulta por Nome, CPF, CNPJ ou OAB em todos os tribunais", inputType: "CNJ / CPF / Nome / OAB", placeholder: "Ex: 1002345-12.2024.8.26.0100 ou CPF/Nome" },
+    { id: "cpf_status", name: "Situação Cadastral de CPF", icon: User, desc: "Regularidade perante a Receita Federal", inputType: "CPF", placeholder: "Digite o CPF (11 dígitos)... Ex: 123.456.789-00" },
+    { id: "empresas", name: "Sociedades e Empresas", icon: Building2, desc: "Quadro de sócios e administradores (QSA)", inputType: "CNPJ", placeholder: "Digite o CNPJ (14 dígitos)... Ex: 00.000.000/0001-91" },
+    { id: "grupo_cnpj", name: "Grupo Econômico de CNPJ", icon: Layers, desc: "Mapeamento de coligadas e filiais", inputType: "CNPJ", placeholder: "Digite o CNPJ da Matriz... Ex: 00.000.000/0001-91" },
+    { id: "veiculo", name: "Dados do Veículo / Renavam", icon: Car, desc: "Histórico, multas, restrições e gravames", inputType: "Placa ou RENAVAM", placeholder: "Digite a Placa (ex: ABC1D23) ou RENAVAM..." },
+    { id: "rastreio_veiculo", name: "Rastreamento de Veículo", icon: Car, desc: "Busca de frota e ativos móveis para execução", inputType: "CPF ou CNPJ do Proprietário", placeholder: "Digite o CPF ou CNPJ para buscar a frota..." },
+    { id: "cnh", name: "Dados da CNH", icon: CreditCard, desc: "Pontuação, suspensões e categoria", inputType: "CPF ou Nº da CNH", placeholder: "Digite o CPF do condutor ou número da CNH..." },
+    { id: "marcas", name: "Marcas e Patentes (INPI)", icon: Award, desc: "Pesquisa de marcas registradas e patentes", inputType: "Nome da Marca ou Processo INPI", placeholder: "Digite o nome da marca ou nº do processo INPI..." },
+    { id: "credito", name: "Restrição de Crédito", icon: CreditCard, desc: "Negativações nos Cartórios de Protesto (IEPTB)", inputType: "CPF ou CNPJ", placeholder: "Digite o CPF ou CNPJ para consulta de protestos..." },
+    { id: "localizacao", name: "Localização de Devedores", icon: User, desc: "Busca de endereços e telefones atualizados", inputType: "CPF, CNPJ ou Nome Completo", placeholder: "Digite o CPF, CNPJ ou Nome do Devedor..." },
+    { id: "relacionamentos", name: "Relacionamentos & Sócios", icon: Users, desc: "Vínculos societários e parentescos", inputType: "CPF ou Nome do Sócio", placeholder: "Digite o CPF ou Nome do Investigado..." },
+    { id: "profissionais", name: "Dados Profissionais", icon: Briefcase, desc: "Vínculos empregatícios e registro de classe", inputType: "CPF ou Registro (OAB, CRM, etc)", placeholder: "Digite o CPF ou Registro Profissional..." },
   ];
 
   const outrosLista = [
@@ -382,16 +382,19 @@ function FerramentasContent() {
           </div>
 
           <div className="card space-y-4">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-              <Search className="w-5 h-5 text-amber-500" />
-              <h2 className="font-bold text-slate-900 text-base">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <Search className="w-5 h-5 text-amber-500" />
                 {consultasLista.find((c) => c.id === selectedConsulta)?.name}
               </h2>
+              <span className="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3 py-1 rounded-full">
+                Identificador: {consultasLista.find((c) => c.id === selectedConsulta)?.inputType}
+              </span>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
-                placeholder={`Digite o CPF, CNPJ, Nome, OAB ou Placa para consultar (${consultasLista.find((c) => c.id === selectedConsulta)?.name})...`}
+                placeholder={consultasLista.find((c) => c.id === selectedConsulta)?.placeholder || "Digite o termo..."}
                 className="input flex-1"
                 value={consultaTermo}
                 onChange={(e) => setConsultaTermo(e.target.value)}
