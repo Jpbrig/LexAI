@@ -125,7 +125,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       {/* Grid de Seções */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
         
         {/* Coluna Esquerda: Avatar & Status */}
         <div className="space-y-6">
