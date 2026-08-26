@@ -26,6 +26,8 @@ import {
   Scale,
   CheckCircle2,
   AlertCircle,
+  Info,
+  HelpCircle,
 } from "lucide-react";
 
 function FerramentasContent() {
@@ -110,19 +112,136 @@ function FerramentasContent() {
   const totalCorrigido = val * Math.pow(1 + tx / 100, m);
 
   const calculosLista = [
-    { id: "trabalhista", name: "Trabalhista (CLT)", icon: Calculator, desc: "Rescisão, saldo de salário, 13º e Férias" },
-    { id: "correcao", name: "Correção de Valores", icon: MoneyIcon, desc: "Atualização monetária por índices oficiais" },
-    { id: "fgts", name: "Revisão do FGTS", icon: DollarSign, desc: "Cálculo da TR vs INPC/IPCA-E" },
-    { id: "pasep", name: "Recálculo PASEP", icon: Scale, desc: "Diferenças de saldos para servidores públicos" },
-    { id: "rmc", name: "Cartão RMC e RCC", icon: CreditCard, desc: "Revisão de reserva de margem consignável" },
-    { id: "superendividamento", name: "Superendividamento", icon: ShieldAlert, desc: "Repactuação de dívidas e mínimo existencial" },
-    { id: "revisional", name: "Revisional de Contratos", icon: FileText, desc: "Análise de juros abusivos em financiamentos" },
-    { id: "dosimetria", name: "Dosimetria da Pena", icon: Scale, desc: "Cálculo de penas base, atenuantes e agravantes" },
-    { id: "regime", name: "Progressão de Regime", icon: Layers, desc: "Fração de cumprimento de pena criminal" },
-    { id: "aluguel", name: "Reajuste de Aluguel", icon: Building2, desc: "Atualização por IGPM / IPCA" },
-    { id: "pensao", name: "Pensão Alimentícia", icon: Users, desc: "Cálculo percentual sobre renda/salário mínimo" },
-    { id: "inss", name: "Revisão INSS / Previdenciário", icon: Briefcase, desc: "RMI, tempo de contribuição e regras de transição" },
-    { id: "divorcio", name: "Partilha de Divórcio", icon: Users, desc: "Divisão de bens e meação de ativos" },
+    {
+      id: "trabalhista",
+      name: "Trabalhista (CLT)",
+      icon: Calculator,
+      desc: "Rescisão, saldo de salário, 13º e Férias",
+      info: "Calcula verbas rescisórias conforme Art. 477 da CLT. Inclui saldo salarial, 13º proporcional, férias vencidas/proporcionais + 1/3 e multa de 40% sobre o FGTS.",
+      labelValor: "Último Salário Bruto (R$)",
+      labelTaxa: "Descontos / Faltas (R$)",
+      labelMeses: "Meses Trabalhados no Ano",
+    },
+    {
+      id: "correcao",
+      name: "Correção de Valores",
+      icon: MoneyIcon,
+      desc: "Atualização monetária por índices oficiais",
+      info: "Atualiza débitos judiciais com base em índices oficiais (INPC, IPCA-E, IGPM, SELIC). Utilizado em execuções de sentença e cobranças cíveis.",
+      labelValor: "Valor de Origem (R$)",
+      labelTaxa: "Índice Acumulado (%)",
+      labelMeses: "Período (Meses de Atualização)",
+    },
+    {
+      id: "fgts",
+      name: "Revisão do FGTS",
+      icon: DollarSign,
+      desc: "Cálculo da TR vs INPC/IPCA-E",
+      info: "Calcula as diferenças de expurgos inflacionários substituindo a TR (Taxa Referencial) pelo INPC/IPCA-E nos depósitos do FGTS entre 1999 e 2023 (TEMA 1091 STF).",
+      labelValor: "Saldo do FGTS Época (R$)",
+      labelTaxa: "Diferença do Índice TR x INPC (%)",
+      labelMeses: "Meses de Contribuição",
+    },
+    {
+      id: "pasep",
+      name: "Recálculo PASEP",
+      icon: Scale,
+      desc: "Diferenças de saldos para servidores públicos",
+      info: "Recálculo dos saques e cotas do PASEP para servidores públicos admitidos antes da Constituição de 1988, apurando perdas por atualizações incorretas do Banco do Brasil.",
+      labelValor: "Saldo Inicial Depositado (R$)",
+      labelTaxa: "Taxa de Correção Devida (% a.a.)",
+      labelMeses: "Anos de Serviço Público",
+    },
+    {
+      id: "rmc",
+      name: "Cartão RMC e RCC",
+      icon: CreditCard,
+      desc: "Revisão de reserva de margem consignável",
+      info: "Revisão de contratos de Cartão de Crédito Consignado (RMC/RCC). Converte o desconto infinito em folha de pagamento para um empréstimo consignado comum amortizável.",
+      labelValor: "Valor do Empréstimo Saque (R$)",
+      labelTaxa: "Taxa do Contrato vs Teto INSS (% a.m.)",
+      labelMeses: "Meses de Desconto em Folha",
+    },
+    {
+      id: "superendividamento",
+      name: "Superendividamento",
+      icon: ShieldAlert,
+      desc: "Repactuação de dívidas e mínimo existencial",
+      info: "Mapeamento do plano de repactuação de dívidas conforme Lei 14.181/2021 (Lei do Superendividamento), preservando o mínimo existencial da família.",
+      labelValor: "Renda Líquida Mensal (R$)",
+      labelTaxa: "Comprometimento Total Dívidas (%)",
+      labelMeses: "Prazo Proposto de Quitação (Meses)",
+    },
+    {
+      id: "revisional",
+      name: "Revisional de Contratos",
+      icon: FileText,
+      desc: "Análise de juros abusivos em financiamentos",
+      info: "Compara a taxa cobrada no contrato de financiamento de veículo ou imobiliário com a Taxa Média de Mercado divulgada pelo Banco Central (Bacen).",
+      labelValor: "Valor Financiado (R$)",
+      labelTaxa: "Taxa Contratada (% a.m.)",
+      labelMeses: "Prazo Total do Financiamento",
+    },
+    {
+      id: "dosimetria",
+      name: "Dosimetria da Pena",
+      icon: Scale,
+      desc: "Cálculo de penas base, atenuantes e agravantes",
+      info: "Cálculo trifásico da pena criminal (Art. 68 CP): 1ª fase (Pena-Base - Art. 59), 2ª fase (Atenuantes/Agravantes) e 3ª fase (Causas de Aumento e Diminuição).",
+      labelValor: "Pena Mínima Cominada (Anos)",
+      labelTaxa: "Fração de Aumento/Redução (%)",
+      labelMeses: "Meses de Pena Aplicada",
+    },
+    {
+      id: "regime",
+      name: "Progressão de Regime",
+      icon: Layers,
+      desc: "Fração de cumprimento de pena criminal",
+      info: "Cálculo de lapsos temporais para progressão de regime (Fechado -> Semiaberto -> Aberto) conforme o Pacote Anticrime (Art. 112 da LEP - 16%, 20%, 40%, 60%, etc).",
+      labelValor: "Total da Pena Imposta (Anos)",
+      labelTaxa: "Fração de Cumprimento LEP (%)",
+      labelMeses: "Meses Cumpridos na Prisão",
+    },
+    {
+      id: "aluguel",
+      name: "Reajuste de Aluguel",
+      icon: Building2,
+      desc: "Atualização por IGPM / IPCA",
+      info: "Aplica os índices acumulados de 12 meses (IGP-M da FGV ou IPCA do IBGE) para atualizar contratos de locação imobiliária residencial ou comercial.",
+      labelValor: "Valor Atual do Aluguel (R$)",
+      labelTaxa: "Índice de Reajuste Acumulado (%)",
+      labelMeses: "Período do Contrato (Meses)",
+    },
+    {
+      id: "pensao",
+      name: "Pensão Alimentícia",
+      icon: Users,
+      desc: "Cálculo percentual sobre renda/salário mínimo",
+      info: "Dimensionamento da obrigação alimentícia com base no binômio necessidade x possibilidade (Art. 1.694 do Código Civil) sobre rendimentos líquidos ou Salário Mínimo.",
+      labelValor: "Rendimento Líquido do Alimentante (R$)",
+      labelTaxa: "Percentual Fixado (%)",
+      labelMeses: "Número de Alimentados (Filhos)",
+    },
+    {
+      id: "inss",
+      name: "Revisão INSS / Previdenciário",
+      icon: Briefcase,
+      desc: "RMI, tempo de contribuição e regras de transição",
+      info: "Cálculo da Renda Mensal Inicial (RMI) do benefício previdenciário, apurando regras de transição (Pontos, Idade Progressiva, Pedágio 50%/100% da EC 103/2019).",
+      labelValor: "Média dos Salários de Contribuição (R$)",
+      labelTaxa: "Alíquota do Coeficiente (% EC 103)",
+      labelMeses: "Tempo de Contribuição (Anos)",
+    },
+    {
+      id: "divorcio",
+      name: "Partilha de Divórcio",
+      icon: Users,
+      desc: "Divisão de bens e meação de ativos",
+      info: "Levantamento do monte mor de bens comunheis conforme o regime de bens (Comunhão Parcial ou Total), apurando a meação exata (50%) e eventuais compensações.",
+      labelValor: "Valor Total do Patrimônio (R$)",
+      labelTaxa: "Meação / Quota Parte (%)",
+      labelMeses: "Dívidas a Deduzir (R$)",
+    },
   ];
 
   const consultasLista = [
@@ -187,175 +306,200 @@ function FerramentasContent() {
           </div>
 
           {/* Painel do Cálculo Selecionado */}
-          {selectedCalc === "trabalhista" ? (
-            <div className="space-y-4">
-              <div className="card space-y-5">
-                <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                  <Calculator className="w-5 h-5 text-amber-500" />
-                  <h2 className="font-bold text-slate-900 text-base">Cálculo Rescisório Trabalhista (CLT)</h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="label">Último Salário Bruto (R$)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">R$</span>
+          <div className="space-y-4">
+            {/* Banner Informativo Explicativo com Ícone de Informação */}
+            <div className="p-4 bg-amber-50 border border-amber-200/80 rounded-2xl flex items-start gap-3 text-amber-900">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Info className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  {calculosLista.find((c) => c.id === selectedCalc)?.name}
+                  <span className="text-[10px] bg-amber-200 text-amber-900 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Fundamentação Legal
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-700 leading-relaxed">
+                  {calculosLista.find((c) => c.id === selectedCalc)?.info}
+                </p>
+              </div>
+            </div>
+
+            {selectedCalc === "trabalhista" ? (
+              <div className="space-y-4">
+                <div className="card space-y-5">
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                    <Calculator className="w-5 h-5 text-amber-500" />
+                    <h2 className="font-bold text-slate-900 text-base">Cálculo Rescisório Trabalhista (CLT)</h2>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="label">Último Salário Bruto (R$)</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">R$</span>
+                        <input
+                          type="number"
+                          className="input pl-9"
+                          value={salario}
+                          onChange={(e) => setSalario(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="label">Meses Trabalhados no Ano</label>
                       <input
                         type="number"
-                        className="input pl-9"
-                        value={salario}
-                        onChange={(e) => setSalario(e.target.value)}
+                        min="1"
+                        max="12"
+                        className="input"
+                        value={mesesTrabalhados}
+                        onChange={(e) => setMesesTrabalhados(Number(e.target.value))}
                       />
                     </div>
-                  </div>
-                  <div>
-                    <label className="label">Meses Trabalhados no Ano</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      className="input"
-                      value={mesesTrabalhados}
-                      onChange={(e) => setMesesTrabalhados(Number(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Tipo de Rescisão</label>
-                    <select
-                      className="input"
-                      value={tipoDemissao}
-                      onChange={(e) => setTipoDemissao(e.target.value)}
-                    >
-                      <option value="sem_justa_causa">Sem Justa Causa (Multa 40%)</option>
-                      <option value="com_justa_causa">Com Justa Causa</option>
-                      <option value="pedido_demissao">Pedido de Demissão</option>
-                    </select>
-                  </div>
-                  <div className="flex items-end">
-                    <label className="flex items-center gap-2 cursor-pointer w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={avisoPrevio}
-                        onChange={(e) => setAvisoPrevio(e.target.checked)}
-                        className="w-4 h-4 accent-slate-900"
-                      />
-                      <span className="text-xs font-semibold text-slate-700">Aviso Prévio Indenizado</span>
-                    </label>
+                    <div>
+                      <label className="label">Tipo de Rescisão</label>
+                      <select
+                        className="input"
+                        value={tipoDemissao}
+                        onChange={(e) => setTipoDemissao(e.target.value)}
+                      >
+                        <option value="sem_justa_causa">Sem Justa Causa (Multa 40%)</option>
+                        <option value="com_justa_causa">Com Justa Causa</option>
+                        <option value="pedido_demissao">Pedido de Demissão</option>
+                      </select>
+                    </div>
+                    <div className="flex items-end">
+                      <label className="flex items-center gap-2 cursor-pointer w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={avisoPrevio}
+                          onChange={(e) => setAvisoPrevio(e.target.checked)}
+                          className="w-4 h-4 accent-slate-900"
+                        />
+                        <span className="text-xs font-semibold text-slate-700">Aviso Prévio Indenizado</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Total Highlight */}
-              <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Rescisório Estimado</p>
-                  <p className="font-display text-4xl font-bold text-amber-400 mt-1">
-                    R$ {totalEstimado.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+                {/* Total Highlight */}
+                <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Total Rescisório Estimado</p>
+                    <p className="font-display text-4xl font-bold text-amber-400 mt-1">
+                      R$ {totalEstimado.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="w-7 h-7 text-amber-400" />
+                  </div>
                 </div>
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
-                  <DollarSign className="w-7 h-7 text-amber-400" />
-                </div>
-              </div>
 
-              {/* Tabela de Verbas */}
-              <div className="card space-y-3">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-amber-500" />
-                    Demonstrativo de Verbas Rescisórias
-                  </h2>
-                  <span className="badge badge-success font-bold">Estimativa Automática</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="flex justify-between items-center p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
-                    <span className="text-sm font-medium text-slate-700">13º Salário Proporcional ({mesesTrabalhados}/12)</span>
-                    <span className="font-bold text-slate-900">R$ {decimoTerceiro.toFixed(2)}</span>
+                {/* Tabela de Verbas */}
+                <div className="card space-y-3">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-500" />
+                      Demonstrativo de Verbas Rescisórias
+                    </h2>
+                    <span className="badge badge-success font-bold">Estimativa Automática</span>
                   </div>
-                  <div className="flex justify-between items-center p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
-                    <span className="text-sm font-medium text-slate-700">Férias Proporcionais ({mesesTrabalhados}/12)</span>
-                    <span className="font-bold text-slate-900">R$ {feriasProporcionais.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
-                    <span className="text-sm font-medium text-slate-700">1/3 Constitucional sobre Férias</span>
-                    <span className="font-bold text-slate-900">R$ {tercoFerias.toFixed(2)}</span>
-                  </div>
-                  {avisoPrevio && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex justify-between items-center p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
-                      <span className="text-sm font-medium text-slate-700">Aviso Prévio Indenizado (1 mês)</span>
-                      <span className="font-bold text-slate-900">R$ {avisoPrevioValor.toFixed(2)}</span>
+                      <span className="text-sm font-medium text-slate-700">13º Salário Proporcional ({mesesTrabalhados}/12)</span>
+                      <span className="font-bold text-slate-900">R$ {decimoTerceiro.toFixed(2)}</span>
                     </div>
-                  )}
-                  {tipoDemissao === "sem_justa_causa" && (
-                    <div className="flex justify-between items-center p-3.5 rounded-xl border border-amber-100 bg-amber-50/50 sm:col-span-2">
-                      <span className="text-sm font-medium text-amber-900">Multa Rescisória de 40% sobre o FGTS</span>
-                      <span className="font-bold text-amber-900">R$ {multaFgts.toFixed(2)}</span>
+                    <div className="flex justify-between items-center p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                      <span className="text-sm font-medium text-slate-700">Férias Proporcionais ({mesesTrabalhados}/12)</span>
+                      <span className="font-bold text-slate-900">R$ {feriasProporcionais.toFixed(2)}</span>
                     </div>
-                  )}
+                    <div className="flex justify-between items-center p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                      <span className="text-sm font-medium text-slate-700">1/3 Constitucional sobre Férias</span>
+                      <span className="font-bold text-slate-900">R$ {tercoFerias.toFixed(2)}</span>
+                    </div>
+                    {avisoPrevio && (
+                      <div className="flex justify-between items-center p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                        <span className="text-sm font-medium text-slate-700">Aviso Prévio Indenizado (1 mês)</span>
+                        <span className="font-bold text-slate-900">R$ {avisoPrevioValor.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {tipoDemissao === "sem_justa_causa" && (
+                      <div className="flex justify-between items-center p-3.5 rounded-xl border border-amber-100 bg-amber-50/50 sm:col-span-2">
+                        <span className="text-sm font-medium text-amber-900">Multa Rescisória de 40% sobre o FGTS</span>
+                        <span className="font-bold text-amber-900">R$ {multaFgts.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            /* Formulário Dinâmico Genérico para os outros 12 Cálculos */
-            <div className="space-y-4">
-              <div className="card space-y-5">
-                <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                  <Calculator className="w-5 h-5 text-amber-500" />
-                  <h2 className="font-bold text-slate-900 text-base">
-                    {calculosLista.find((c) => c.id === selectedCalc)?.name}
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="label">Valor de Origem / Base (R$)</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">R$</span>
+            ) : (
+              /* Formulário Dinâmico Personalizado para os outros 12 Cálculos */
+              <div className="space-y-4">
+                <div className="card space-y-5">
+                  <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                    <Calculator className="w-5 h-5 text-amber-500" />
+                    <h2 className="font-bold text-slate-900 text-base">
+                      {calculosLista.find((c) => c.id === selectedCalc)?.name}
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="label">
+                        {calculosLista.find((c) => c.id === selectedCalc)?.labelValor || "Valor de Origem (R$)"}
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">R$</span>
+                        <input
+                          type="number"
+                          className="input pl-9"
+                          value={valorBase}
+                          onChange={(e) => setValorBase(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="label">
+                        {calculosLista.find((c) => c.id === selectedCalc)?.labelTaxa || "Taxa / Índice (%)"}
+                      </label>
                       <input
                         type="number"
-                        className="input pl-9"
-                        value={valorBase}
-                        onChange={(e) => setValorBase(e.target.value)}
+                        step="0.1"
+                        className="input"
+                        value={taxaJuros}
+                        onChange={(e) => setTaxaJuros(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="label">
+                        {calculosLista.find((c) => c.id === selectedCalc)?.labelMeses || "Período (Meses)"}
+                      </label>
+                      <input
+                        type="number"
+                        className="input"
+                        value={meses}
+                        onChange={(e) => setMeses(e.target.value)}
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="label">Taxa / Índice Aplicado (% a.m.)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      className="input"
-                      value={taxaJuros}
-                      onChange={(e) => setTaxaJuros(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Período (Meses / Parcelas)</label>
-                    <input
-                      type="number"
-                      className="input"
-                      value={meses}
-                      onChange={(e) => setMeses(e.target.value)}
-                    />
-                  </div>
                 </div>
-              </div>
 
-              {/* Resultado Genérico */}
-              <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Valor Atualizado Estimado</p>
-                  <p className="font-display text-4xl font-bold text-amber-400 mt-1">
-                    R$ {totalCorrigido.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Diferença/Ganho: R$ {(totalCorrigido - val).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
-                  <DollarSign className="w-7 h-7 text-amber-400" />
+                <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Valor Atualizado Estimado</p>
+                    <p className="font-display text-4xl font-bold text-amber-400 mt-1">
+                      R$ {totalCorrigido.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Diferença/Ganho: R$ {(totalCorrigido - val).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="w-7 h-7 text-amber-400" />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
