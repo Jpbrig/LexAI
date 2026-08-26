@@ -1894,7 +1894,7 @@ Usuário: ${texto}`;
                   rel="noopener noreferrer"
                   className="btn-primary text-xs w-full justify-center py-2.5 mt-2"
                 >
-                  📖 Consultar Lei Seca no Planalto ↗
+                  Consultar ↗
                 </a>
               </div>
             ))}
