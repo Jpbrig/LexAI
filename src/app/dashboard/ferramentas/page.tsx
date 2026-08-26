@@ -534,14 +534,12 @@ function FerramentasContent() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
                       <label className="label">Último Salário Bruto (R$)</label>
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none select-none">
-                          R$
-                        </span>
+                      <div className="flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden focus-within:ring-2 focus-within:ring-slate-300">
+                        <span className="px-3 text-slate-400 text-sm font-bold bg-slate-50 border-r border-slate-200 h-full flex items-center select-none" style={{height:'40px'}}>R$</span>
                         <input
                           type="number"
                           placeholder="0,00"
-                          className="input pl-12 font-semibold"
+                          className="flex-1 px-3 py-2 text-sm font-semibold outline-none bg-white"
                           value={salario}
                           onChange={(e) => setSalario(e.target.value)}
                         />
@@ -649,14 +647,12 @@ function FerramentasContent() {
                       <label className="label font-bold text-slate-800">
                         {calculosLista.find((c) => c.id === selectedCalc)?.labelValor || "Valor de Origem (R$)"}
                       </label>
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none select-none">
-                          R$
-                        </span>
+                      <div className="flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden focus-within:ring-2 focus-within:ring-slate-300">
+                        <span className="px-3 text-slate-400 text-sm font-bold bg-slate-50 border-r border-slate-200 select-none" style={{height:'40px', display:'flex', alignItems:'center'}}>R$</span>
                         <input
                           type="number"
                           placeholder="0,00"
-                          className="input pl-12 font-semibold"
+                          className="flex-1 px-3 py-2 text-sm font-semibold outline-none bg-white"
                           value={valorBase}
                           onChange={(e) => setValorBase(e.target.value)}
                         />
