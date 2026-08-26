@@ -32,8 +32,8 @@ import {
 
 function FerramentasContent() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | null;
-  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes">("calculadoras");
+  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | null;
+  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente">("calculadoras");
 
   useEffect(() => {
     if (tabParam) {
@@ -123,6 +123,67 @@ function FerramentasContent() {
   const [loadingGov, setLoadingGov] = useState<boolean>(false);
   const [resultadoGov, setResultadoGov] = useState<any>(null);
   const [errorGov, setErrorGov] = useState<string>("");
+
+  // I.A. Assistente Jurídico state
+  type ChatMsg = { role: "user" | "assistant"; text: string };
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
+    { role: "assistant", text: "Olá! Sou seu Assistente Jurídico IA, especializado em direito brasileiro. Posso ajudar com pesquisa de jurisprudência, fundamentação legal, análise de casos, doutrina e mais. Como posso te ajudar?" },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [loadingChat, setLoadingChat] = useState(false);
+
+  async function enviarMensagem() {
+    const texto = chatInput.trim();
+    if (!texto || loadingChat) return;
+    const geminiKey = typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : "";
+
+    const novaMensagem: ChatMsg = { role: "user", text: texto };
+    setChatMessages((prev) => [...prev, novaMensagem]);
+    setChatInput("");
+    setLoadingChat(true);
+
+    const systemPrompt = `Você é um assistente jurídico especializado em Direito Brasileiro.
+Suas áreas de expertise incluem: Direito Civil, Direito do Trabalho (CLT), Direito Penal, Direito Processual Civil e Penal, Direito do Consumidor (CDC), Direito Tributário, Direito Previdenciário (INSS), Direito de Família e Sucessões, Direito Empresarial e Contratos.
+Forneça respostas precisas citando artigos de lei, súmulas (STF/STJ) e jurisprudência relevante quando aplicável.
+Responda em português do Brasil com linguagem técnica e clara.
+Alerte sempre que a questão exigir análise de caso específico com um advogado.
+Histórico da conversa:
+${chatMessages.map((m) => `${m.role === "user" ? "Usuário" : "Assistente"}: ${m.text}`).join("\n")}
+Usuário: ${texto}`;
+
+    if (!geminiKey) {
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "⚠️ **Chave Gemini não configurada.** Acesse [Configurações](/dashboard/configuracoes) → Conectores & Credenciais e adicione sua Google Gemini API Key (gratuita em aistudio.google.com/app/apikey) para usar o assistente.",
+        },
+      ]);
+      setLoadingChat(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: systemPrompt }] }],
+            generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
+          }),
+        }
+      );
+      const data = await res.json();
+      const resposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Não foi possível obter uma resposta. Tente novamente.";
+      setChatMessages((prev) => [...prev, { role: "assistant", text: resposta }]);
+    } catch {
+      setChatMessages((prev) => [...prev, { role: "assistant", text: "Erro de conexão. Verifique sua chave Gemini nas Configurações." }]);
+    } finally {
+      setLoadingChat(false);
+    }
+  }
 
   // Petições IA state
   const [tipoPeca, setTipoPeca] = useState<string>("inicial");
@@ -581,8 +642,6 @@ function FerramentasContent() {
     { id: "novos_clientes", name: "Captação de Novos Clientes", icon: Users, desc: "Conexão com potenciais clientes jurídicos" },
     { id: "monitoramento", name: "Monitoramento de Processos", icon: Search, desc: "Alertas automáticos a cada movimentação" },
     { id: "assinatura", name: "Assinatura Eletrônica", icon: FileSignature, desc: "Envio de contratos para assinatura digital com validade legal" },
-    { id: "peticoes", name: "Gerador de Petições IA", icon: FileText, desc: "Modelos inteligentes de peças processuais" },
-    { id: "ia_assistente", name: "I.A. Assistente Jurídico", icon: Bot, desc: "Chat inteligente para pesquisas de doutrina e jurisprudência" },
     { id: "ia_sites", name: "I.A. Criador de Sites para Escritórios", icon: Globe, desc: "Crie o site do seu escritório em 5 minutos" },
     { id: "financeiro", name: "Gestão Financeira & Honorários", icon: MoneyIcon, desc: "Controle de caixa, faturamento e honorários sucumbenciais" },
     { id: "jurisprudencias", name: "Pesquisador de Jurisprudências", icon: Scale, desc: "Busca unificada em acórdãos do STF, STJ e TJs" },
@@ -1216,6 +1275,105 @@ function FerramentasContent() {
           )}
         </div>
       )}
+      {/* ABA 6: I.A. ASSISTENTE JURÍDICO */}
+      {activeTab === "assistente" && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl flex items-center gap-4 shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
+              <Bot className="w-7 h-7 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">I.A. Assistente Jurídico</h2>
+              <p className="text-slate-300 text-sm">Powered by Google Gemini — Pesquise jurisprudência, doutrina e fundamentos legais em tempo real.</p>
+            </div>
+            <a href="/dashboard/configuracoes" className="ml-auto flex-shrink-0 text-xs bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-xl px-3 py-2 hover:bg-amber-500/30 transition-colors">
+              ⚙️ Configurar Chave Gemini
+            </a>
+          </div>
+
+          {/* Sugestões Rápidas */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Requisitos para aposentadoria por tempo de contribuição?",
+              "O que diz o STJ sobre juros abusivos em contratos bancários?",
+              "Direitos do consumidor em compra cancelada online?",
+              "Como funciona a dosimetria da pena no Código Penal?",
+              "Prazo para contestar uma ação cível",
+              "Diferença entre dano moral e dano material",
+            ].map((sugestao) => (
+              <button
+                key={sugestao}
+                onClick={() => setChatInput(sugestao)}
+                className="text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50 transition-all"
+              >
+                {sugestao}
+              </button>
+            ))}
+          </div>
+
+          {/* Janela do Chat */}
+          <div className="card p-0 overflow-hidden flex flex-col" style={{ height: "520px" }}>
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold ${msg.role === "user" ? "bg-slate-900" : "bg-amber-500"}`}>
+                    {msg.role === "user" ? "EU" : "IA"}
+                  </div>
+                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                    msg.role === "user"
+                      ? "bg-slate-900 text-white rounded-tr-sm"
+                      : "bg-slate-50 border border-slate-200 text-slate-800 rounded-tl-sm"
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {loadingChat && (
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">IA</div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
+                    <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="border-t border-slate-100 p-4 bg-slate-50/50">
+              <div className="flex gap-3 items-end">
+                <textarea
+                  rows={2}
+                  className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm resize-none outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300 transition-all"
+                  placeholder="Faça uma pergunta jurídica... (Enter para enviar, Shift+Enter para nova linha)"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      enviarMensagem();
+                    }
+                  }}
+                />
+                <button
+                  onClick={enviarMensagem}
+                  disabled={loadingChat || !chatInput.trim()}
+                  className="btn-primary px-5 py-3 self-end disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingChat
+                    ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <Sparkles className="w-5 h-5 text-amber-400" />
+                  }
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2 text-center">
+                Respostas geradas por IA com base em legislação e jurisprudência brasileira. Consulte sempre um advogado para casos específicos.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ABA 5: PETIÇÕES IA */}
       {activeTab === "peticoes" && (
         <div className="space-y-6">
