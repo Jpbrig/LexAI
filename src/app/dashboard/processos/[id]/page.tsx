@@ -108,7 +108,7 @@ export default function ProcessoDetailPage() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-4xl">
+    <div className="space-y-6 animate-fade-in">
       {/* Breadcrumb */}
       <Link href="/dashboard/processos" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" />

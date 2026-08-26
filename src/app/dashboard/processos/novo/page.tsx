@@ -125,7 +125,7 @@ export default function NovoProcessoPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-16">
+    <div className="space-y-6 animate-fade-in">
       <Link href="/dashboard/processos" className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors w-fit">
         <ArrowLeft className="w-4 h-4" />
         Voltar para Meus Processos
