@@ -32,8 +32,8 @@ import {
 
 function FerramentasContent() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | null;
-  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente">("calculadoras");
+  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | null;
+  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura">("calculadoras");
 
   useEffect(() => {
     if (tabParam) {
@@ -190,6 +190,93 @@ Usuário: ${texto}`;
     } finally {
       setLoadingChat(false);
     }
+  }
+
+  // ClicSign Assinatura Eletrônica state
+  const [sigNomeSignatario, setSigNomeSignatario] = useState("");
+  const [sigEmailSignatario, setSigEmailSignatario] = useState("");
+  const [sigCpfSignatario, setSigCpfSignatario] = useState("");
+  const [sigNomeDocumento, setSigNomeDocumento] = useState("");
+  const [sigConteudoDocumento, setSigConteudoDocumento] = useState("");
+  const [sigMetodoAutenticacao, setSigMetodoAutenticacao] = useState("icp_brasil");
+  const [loadingClicsign, setLoadingClicsign] = useState(false);
+  const [sucessoClicsign, setSucessoClicsign] = useState("");
+  const [erroClicsign, setErroClicsign] = useState("");
+  const [sigFileName, setSigFileName] = useState("");
+
+  type EnvelopeItem = { id: string; docName: string; signerName: string; signerEmail: string; status: string; date: string; auth: string };
+  const [envelopesEnviados, setEnvelopesEnviados] = useState<EnvelopeItem[]>([
+    { id: "doc_01", docName: "Contrato_Honorarios_Advocaticios.pdf", signerName: "Carlos Eduardo Silva", signerEmail: "carlos.silva@email.com", status: "Assinado (Selo ICP-Brasil)", date: "26/08/2026", auth: "icp_brasil" },
+    { id: "doc_02", docName: "Procuracao_Ad_Judicia.pdf", signerName: "Mariana Souza Santos", signerEmail: "mariana.santos@email.com", status: "Aguardando Assinatura", date: "26/08/2026", auth: "icp_brasil" }
+  ]);
+
+  async function enviarAssinaturaClicSign() {
+    setLoadingClicsign(true);
+    setErroClicsign("");
+    setSucessoClicsign("");
+
+    const clicsignKey = typeof window !== "undefined" ? localStorage.getItem("clicsign_api_key") || "" : "";
+    const environment = typeof window !== "undefined" ? localStorage.getItem("clicsign_env") || "sandbox" : "sandbox";
+
+    try {
+      const res = await fetch("/api/assinaturas/clicsign/enviar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nomeSignatario: sigNomeSignatario,
+          emailSignatario: sigEmailSignatario,
+          cpfSignatario: sigCpfSignatario,
+          nomeDocumento: sigNomeDocumento || "Contrato_LexAI",
+          conteudoDocumento: sigConteudoDocumento,
+          metodoAutenticacao: sigMetodoAutenticacao,
+          clicsignKey,
+          environment
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.sucesso) {
+        setSucessoClicsign(data.mensagem || "Documento enviado com sucesso via ClicSign!");
+        setEnvelopesEnviados((prev) => [
+          {
+            id: data.documentKey || `doc_${Date.now()}`,
+            docName: (sigNomeDocumento || "Contrato_LexAI") + ".pdf",
+            signerName: sigNomeSignatario,
+            signerEmail: sigEmailSignatario,
+            status: "Aguardando Assinatura",
+            date: new Date().toLocaleDateString("pt-BR"),
+            auth: sigMetodoAutenticacao
+          },
+          ...prev
+        ]);
+        setSigNomeSignatario("");
+        setSigEmailSignatario("");
+        setSigCpfSignatario("");
+        setSigConteudoDocumento("");
+        setSigNomeDocumento("");
+        setSigFileName("");
+      } else {
+        setErroClicsign(data.error || "Erro ao conectar com a API da ClicSign.");
+      }
+    } catch {
+      setErroClicsign("Erro de conexão com o servidor.");
+    } finally {
+      setLoadingClicsign(false);
+    }
+  }
+
+  function handleSigFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSigFileName(file.name);
+    setSigNomeDocumento(file.name.replace(/\.[^/.]+$/, ""));
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      setSigConteudoDocumento(content);
+    };
+    reader.readAsText(file);
   }
 
   // Petições IA state
@@ -1281,6 +1368,172 @@ Usuário: ${texto}`;
           )}
         </div>
       )}
+      {/* ABA 7: ASSINATURA ELETRÔNICA (CLICSIGN) */}
+      {activeTab === "assinatura" && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="p-5 bg-gradient-to-r from-emerald-900 to-slate-900 text-white rounded-2xl flex items-center gap-4 shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0">
+              <FileSignature className="w-7 h-7 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">Assinatura Eletrônica (ClicSign API)</h2>
+              <p className="text-emerald-200 text-sm">Envio formal de contratos e procurações por e-mail com Selo Digital ICP-Brasil e validade jurídica plena.</p>
+            </div>
+            <a href="/dashboard/configuracoes" className="ml-auto flex-shrink-0 text-xs bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-xl px-3 py-2 hover:bg-emerald-500/30 transition-colors">
+              ⚙️ Configurar Token ClicSign
+            </a>
+          </div>
+
+          {/* Form de Novo Envio */}
+          <div className="card space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <User className="w-5 h-5 text-emerald-600" />
+              <h2 className="font-bold text-slate-900 text-base">1. Dados do Signatário (Cliente)</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="label">Nome Completo do Cliente</label>
+                <input type="text" className="input" placeholder="Ex: Carlos Eduardo Silva..." value={sigNomeSignatario} onChange={(e) => setSigNomeSignatario(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">E-mail para Envio da Assinatura</label>
+                <input type="email" className="input" placeholder="carlos@email.com..." value={sigEmailSignatario} onChange={(e) => setSigEmailSignatario(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">CPF do Signatário</label>
+                <input type="text" className="input" placeholder="000.000.000-00..." value={sigCpfSignatario} onChange={(e) => setSigCpfSignatario(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Nome do Documento</label>
+                <input type="text" className="input" placeholder="Ex: Contrato_Honorarios_2026..." value={sigNomeDocumento} onChange={(e) => setSigNomeDocumento(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Nível de Autenticação / Selo</label>
+                <select className="input" value={sigMetodoAutenticacao} onChange={(e) => setSigMetodoAutenticacao(e.target.value)}>
+                  <option value="icp_brasil">🔐 Selo ICP-Brasil (Certificado A1/A3 - Validade Máxima)</option>
+                  <option value="email">✉️ Token por E-mail (Assinatura Eletrônica Avançada)</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Upload do Contrato (.txt ou .docx)</label>
+                <label className={`flex items-center gap-2 p-2.5 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${sigFileName ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"}`}>
+                  <FileCheck className={`w-4 h-4 flex-shrink-0 ${sigFileName ? "text-emerald-600" : "text-slate-400"}`} />
+                  <span className={`text-xs font-medium truncate ${sigFileName ? "text-emerald-800" : "text-slate-500"}`}>
+                    {sigFileName || "Clique para anexar o documento"}
+                  </span>
+                  <input type="file" accept=".txt,.docx" className="hidden" onChange={handleSigFileUpload} />
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Conteúdo do Documento a Assinar</label>
+              <textarea
+                rows={6}
+                className="input resize-y font-sans text-sm"
+                placeholder="Cole ou digite aqui o texto completo do contrato, procuração ou acordo..."
+                value={sigConteudoDocumento}
+                onChange={(e) => setSigConteudoDocumento(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Botão de Disparo */}
+          <button
+            onClick={enviarAssinaturaClicSign}
+            disabled={loadingClicsign || !sigNomeSignatario || !sigEmailSignatario || !sigCpfSignatario || !sigConteudoDocumento}
+            className="btn-primary bg-emerald-600 hover:bg-emerald-700 w-full justify-center py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+          >
+            {loadingClicsign ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Conectando à ClicSign API...
+              </>
+            ) : (
+              <>
+                <FileSignature className="w-5 h-5 text-emerald-200" />
+                Disparar Envelope por E-mail (ClicSign)
+              </>
+            )}
+          </button>
+
+          {/* Feedbacks */}
+          {sucessoClicsign && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3 text-emerald-800">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              <span className="text-sm font-bold">{sucessoClicsign}</span>
+            </div>
+          )}
+          {erroClicsign && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-800">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm">Erro no Envio ClicSign</p>
+                <p className="text-sm mt-0.5">{erroClicsign}</p>
+                {erroClicsign.includes("Token") && (
+                  <a href="/dashboard/configuracoes" className="text-xs underline font-bold mt-1 inline-block">
+                    → Ir para Configurações e cadastrar Token ClicSign
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Tabela de Envelopes Enviados */}
+          <div className="card space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-bold text-slate-900 text-base">Documentos em Assinatura</h3>
+              </div>
+              <span className="text-xs bg-slate-100 text-slate-600 font-bold px-3 py-1 rounded-full">
+                {envelopesEnviados.length} Envelopes
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left text-slate-700">
+                <thead className="bg-slate-50 uppercase text-[10px] font-bold text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th className="p-3">Documento</th>
+                    <th className="p-3">Signatário</th>
+                    <th className="p-3">E-mail</th>
+                    <th className="p-3">Autenticação</th>
+                    <th className="p-3">Data</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {envelopesEnviados.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/50">
+                      <td className="p-3 font-bold text-slate-900">{item.docName}</td>
+                      <td className="p-3">{item.signerName}</td>
+                      <td className="p-3 font-mono text-[11px]">{item.signerEmail}</td>
+                      <td className="p-3">
+                        <span className="bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                          {item.auth === "icp_brasil" ? "🔐 Selo ICP-Brasil" : "✉️ E-mail"}
+                        </span>
+                      </td>
+                      <td className="p-3">{item.date}</td>
+                      <td className="p-3">
+                        <span className={`font-bold px-2.5 py-1 rounded-full text-[10px] ${
+                          item.status.includes("Assinado")
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ABA 6: I.A. ASSISTENTE JURÍDICO */}
       {activeTab === "assistente" && (
         <div className="space-y-4">

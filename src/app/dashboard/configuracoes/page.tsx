@@ -271,30 +271,44 @@ export default function ConfiguracoesPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Google Gemini — Petições IA */}
-          <div className="space-y-1.5 sm:col-span-2 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          {/* ClicSign — Assinatura Eletrônica ICP-Brasil */}
+          <div className="space-y-1.5 sm:col-span-2 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">🤖</span>
-              <label className="label font-bold text-sm text-amber-900 mb-0">Google Gemini API Key — Petições IA</label>
+              <span className="text-lg">✍️</span>
+              <label className="label font-bold text-sm text-emerald-900 mb-0">Token API ClicSign — Assinatura ICP-Brasil</label>
             </div>
-            <input
-              type="password"
-              id="gemini-api-key"
-              placeholder="Cole sua chave do Google AI Studio (AIza...)..."
-              className="input text-xs font-mono"
-              defaultValue={typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : ""}
-              onChange={(e) => {
-                if (typeof window !== "undefined") {
-                  localStorage.setItem("gemini_api_key", e.target.value);
-                }
-              }}
-            />
-            <p className="text-[11px] text-amber-700">
-              Obtenha gratuitamente em{" "}
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline font-bold">
-                aistudio.google.com/app/apikey
-              </a>
-              {" "}→ Habilita o Gerador de Petições IA com Google Gemini 1.5 Flash.
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
+                <input
+                  type="password"
+                  id="clicsign-api-key"
+                  placeholder="Cole seu Access Token da ClicSign..."
+                  className="input text-xs font-mono"
+                  defaultValue={typeof window !== "undefined" ? localStorage.getItem("clicsign_api_key") || "" : ""}
+                  onChange={(e) => {
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("clicsign_api_key", e.target.value);
+                    }
+                  }}
+                />
+              </div>
+              <div>
+                <select
+                  className="input text-xs"
+                  defaultValue={typeof window !== "undefined" ? localStorage.getItem("clicsign_env") || "sandbox" : "sandbox"}
+                  onChange={(e) => {
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("clicsign_env", e.target.value);
+                    }
+                  }}
+                >
+                  <option value="sandbox">Ambiente Sandbox (Testes)</option>
+                  <option value="production">Ambiente Produção</option>
+                </select>
+              </div>
+            </div>
+            <p className="text-[11px] text-emerald-700 mt-1">
+              Gere seu token de acesso no painel ClicSign em Configurações → API. Habilita envios com Selo Digital ICP-Brasil e validade jurídica plena.
             </p>
           </div>
 

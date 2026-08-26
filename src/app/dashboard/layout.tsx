@@ -18,6 +18,7 @@ import {
   ChevronRight,
   User,
   Bot,
+  FileSignature,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -32,6 +33,7 @@ const ferramentasNavItems = [
   { href: "/dashboard/ferramentas?tab=procuracao", tab: "procuracao", label: "Gerador de Procuração", icon: FileCheck },
   { href: "/dashboard/ferramentas?tab=peticoes", tab: "peticoes", label: "Petições IA (Gemini)", icon: Bot },
   { href: "/dashboard/ferramentas?tab=assistente", tab: "assistente", label: "I.A. Assistente Jurídico", icon: Sparkles },
+  { href: "/dashboard/ferramentas?tab=assinatura", tab: "assinatura", label: "Assinatura Eletrônica (ClicSign)", icon: FileSignature },
 ];
 
 const secondaryNavItems = [
