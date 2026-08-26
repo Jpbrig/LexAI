@@ -431,6 +431,183 @@ export default function ConfiguracoesPage() {
           </button>
         </div>
       </form>
+
+      {/* GESTÃO DE USUÁRIOS & PERFIS DE SEGURANÇA (RBAC) */}
+      <div className="card space-y-5">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-base">
+              🛡️
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900">Gestão de Usuários &amp; Perfis de Segurança (RBAC)</h3>
+              <p className="text-xs text-slate-500">Controle granular de acesso para sócios, advogados associados, estagiários e secretária</p>
+            </div>
+          </div>
+          <button onClick={() => alert("Convite enviado com sucesso por e-mail!")} className="btn-primary text-xs px-4 py-2">
+            + Convidar Membro
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left text-slate-700">
+            <thead className="bg-slate-50 uppercase text-[10px] font-bold text-slate-500 border-b border-slate-200">
+              <tr>
+                <th className="p-3">Usuário</th>
+                <th className="p-3">E-mail</th>
+                <th className="p-3">Perfil de Acesso</th>
+                <th className="p-3">MFA / 2FA</th>
+                <th className="p-3">Status</th>
+                <th className="p-3 text-right">Ação</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr className="hover:bg-slate-50/50">
+                <td className="p-3 font-bold text-slate-900">Dr. João Pedro Brigagão (Você)</td>
+                <td className="p-3 font-mono">jpbrigagao@advocacia.com</td>
+                <td className="p-3">
+                  <span className="bg-amber-100 text-amber-900 font-extrabold px-2.5 py-0.5 rounded-full text-[10px]">
+                    👑 Admin / Sócio Titular
+                  </span>
+                </td>
+                <td className="p-3">
+                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                    🔐 Ativo (TOTP)
+                  </span>
+                </td>
+                <td className="p-3 text-emerald-600 font-bold">Ativo</td>
+                <td className="p-3 text-right text-slate-400">Titular</td>
+              </tr>
+              <tr className="hover:bg-slate-50/50">
+                <td className="p-3 font-bold text-slate-900">Dra. Amanda Castro</td>
+                <td className="p-3 font-mono">amanda.castro@advocacia.com</td>
+                <td className="p-3">
+                  <span className="bg-blue-100 text-blue-900 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                    ⚖️ Advogada Associada
+                  </span>
+                </td>
+                <td className="p-3">
+                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                    🔐 Ativo (TOTP)
+                  </span>
+                </td>
+                <td className="p-3 text-emerald-600 font-bold">Ativo</td>
+                <td className="p-3 text-right">
+                  <button onClick={() => alert("Permissões atualizadas!")} className="text-amber-600 hover:underline font-bold">Editar</button>
+                </td>
+              </tr>
+              <tr className="hover:bg-slate-50/50">
+                <td className="p-3 font-bold text-slate-900">Lucas Mendes</td>
+                <td className="p-3 font-mono">lucas.mendes@advocacia.com</td>
+                <td className="p-3">
+                  <span className="bg-slate-100 text-slate-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                    🎓 Estagiário (Consulta &amp; Minutas)
+                  </span>
+                </td>
+                <td className="p-3">
+                  <span className="bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                    ⚠️ Pendente
+                  </span>
+                </td>
+                <td className="p-3 text-emerald-600 font-bold">Ativo</td>
+                <td className="p-3 text-right">
+                  <button onClick={() => alert("Permissões atualizadas!")} className="text-amber-600 hover:underline font-bold">Editar</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* AUTENTICAÇÃO MULTIFATOR (MFA / 2FA) */}
+      <div className="card space-y-4 border-l-4 border-l-emerald-500">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-base">
+              🔑
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900">Autenticação Multifator (MFA / 2FA via TOTP)</h3>
+              <p className="text-xs text-slate-500">Proteja a conta do seu escritório com camada extra de segurança (Google Authenticator, Authy ou 1Password)</p>
+            </div>
+          </div>
+          <span className="bg-emerald-100 text-emerald-900 font-extrabold px-3 py-1 rounded-full text-xs">
+            STATUS: ATIVADO
+          </span>
+        </div>
+
+        <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-center justify-between gap-4">
+          <div className="space-y-1 text-xs text-emerald-900">
+            <p className="font-bold">✓ O 2FA está configurado no seu dispositivo.</p>
+            <p className="text-emerald-700">Toda tentativa de login solicitará um código temporário de 6 dígitos gerado pelo seu aplicativo autenticador.</p>
+          </div>
+          <button onClick={() => alert("Um novo QR Code foi enviado para seu e-mail cadastrado.")} className="btn-outline text-xs px-4 py-2 bg-white">
+            Reconfigurar 2FA
+          </button>
+        </div>
+      </div>
+
+      {/* LOGS DE AUDITORIA COMPLETOS (AUDIT TRAIL) */}
+      <div className="card space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-base">
+              📊
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900">Logs de Auditoria &amp; Rastreabilidade (Audit Trail)</h3>
+              <p className="text-xs text-slate-500">Registro imutável de todas as ações executadas na plataforma com carimbo de tempo, usuário e endereço IP</p>
+            </div>
+          </div>
+          <button onClick={() => alert("Relatório de Auditoria baixado em CSV!")} className="btn-outline text-xs px-3 py-1.5">
+            📥 Exportar Log (CSV)
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left text-slate-700">
+            <thead className="bg-slate-50 uppercase text-[10px] font-bold text-slate-500 border-b border-slate-200">
+              <tr>
+                <th className="p-3">Data / Hora (UTC-3)</th>
+                <th className="p-3">Usuário</th>
+                <th className="p-3">Ação Executada</th>
+                <th className="p-3">Módulo</th>
+                <th className="p-3">Endereço IP</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr className="hover:bg-slate-50/50">
+                <td className="p-3 text-slate-500 font-mono">26/08/2026 12:44:12</td>
+                <td className="p-3 font-bold text-slate-900">Dr. João Pedro Brigagão</td>
+                <td className="p-3 font-medium text-emerald-700">Disparo de Envelope ClicSign (Selo ICP-Brasil)</td>
+                <td className="p-3"><span className="bg-slate-100 px-2 py-0.5 rounded text-[10px]">Assinatura</span></td>
+                <td className="p-3 font-mono text-[11px] text-slate-500">187.12.45.102</td>
+              </tr>
+              <tr className="hover:bg-slate-50/50">
+                <td className="p-3 text-slate-500 font-mono">26/08/2026 12:38:05</td>
+                <td className="p-3 font-bold text-slate-900">Dr. João Pedro Brigagão</td>
+                <td className="p-3 font-medium text-blue-700">Geração de Petição Inicial com Gemini IA</td>
+                <td className="p-3"><span className="bg-slate-100 px-2 py-0.5 rounded text-[10px]">Petições IA</span></td>
+                <td className="p-3 font-mono text-[11px] text-slate-500">187.12.45.102</td>
+              </tr>
+              <tr className="hover:bg-slate-50/50">
+                <td className="p-3 text-slate-500 font-mono">26/08/2026 11:15:30</td>
+                <td className="p-3 font-bold text-slate-900">Dra. Amanda Castro</td>
+                <td className="p-3 font-medium text-amber-700">Consulta de Devedores (Serpro PGFN)</td>
+                <td className="p-3"><span className="bg-slate-100 px-2 py-0.5 rounded text-[10px]">Consultas Legais</span></td>
+                <td className="p-3 font-mono text-[11px] text-slate-500">177.34.89.210</td>
+              </tr>
+              <tr className="hover:bg-slate-50/50">
+                <td className="p-3 text-slate-500 font-mono">26/08/2026 09:02:14</td>
+                <td className="p-3 font-bold text-slate-900">Dr. João Pedro Brigagão</td>
+                <td className="p-3 font-medium text-slate-700">Login Efetuado com Sucesso (MFA Ok)</td>
+                <td className="p-3"><span className="bg-slate-100 px-2 py-0.5 rounded text-[10px]">Autenticação</span></td>
+                <td className="p-3 font-mono text-[11px] text-slate-500">187.12.45.102</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

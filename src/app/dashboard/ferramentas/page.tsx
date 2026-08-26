@@ -32,8 +32,8 @@ import {
 
 function FerramentasContent() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | "jurisprudencia" | null;
-  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | "jurisprudencia">("calculadoras");
+  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | "jurisprudencia" | "financeiro" | null;
+  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | "jurisprudencia" | "financeiro">("calculadoras");
 
   useEffect(() => {
     if (tabParam) {
@@ -326,7 +326,38 @@ Usuário: ${texto}`;
     setTimeout(() => setCopiadoId(null), 2500);
   }
 
-  // Petições IA state
+  // Gestão Financeira & Honorários state
+  type Lancamento = { id: string; tipo: "receita" | "despesa"; descricao: string; cliente: string; valor: number; data: string; categoria: string; status: "Pago" | "Pendente" };
+  const [finLancamentos, setFinLancamentos] = useState<Lancamento[]>([
+    { id: "1", tipo: "receita", descricao: "Honorários Iniciais — Ação Trabalhista", cliente: "Carlos Eduardo Silva", valor: 3500, data: "25/08/2026", categoria: "Honorários Pró-Labore", status: "Pago" },
+    { id: "2", tipo: "receita", descricao: "Honorários Sucumbenciais — Agravo TJSP", cliente: "Empresa XYZ S/A", valor: 8200, data: "20/08/2026", categoria: "Sucumbência", status: "Pago" },
+    { id: "3", tipo: "despesa", descricao: "Custas Processuais — Distribuição TJSP", cliente: "Mariana Souza Santos", valor: 450, data: "18/08/2026", categoria: "Custas", status: "Pago" },
+    { id: "4", tipo: "receita", descricao: "Parcela 2/5 — Acordo Extrajudicial", cliente: "João Pedro Oliveira", valor: 1200, data: "30/08/2026", categoria: "Acordo", status: "Pendente" },
+  ]);
+
+  const [finDescricao, setFinDescricao] = useState("");
+  const [finCliente, setFinCliente] = useState("");
+  const [finValor, setFinValor] = useState("");
+  const [finTipo, setFinTipo] = useState<"receita" | "despesa">("receita");
+  const [finCategoria, setFinCategoria] = useState("Honorários Pró-Labore");
+
+  function adicionarLancamento() {
+    if (!finDescricao || !finValor) return;
+    const novo: Lancamento = {
+      id: `fin_${Date.now()}`,
+      tipo: finTipo,
+      descricao: finDescricao,
+      cliente: finCliente || "Cliente Geral",
+      valor: parseFloat(finValor),
+      data: new Date().toLocaleDateString("pt-BR"),
+      categoria: finCategoria,
+      status: "Pago"
+    };
+    setFinLancamentos([novo, ...finLancamentos]);
+    setFinDescricao("");
+    setFinCliente("");
+    setFinValor("");
+  }
   const [tipoPeca, setTipoPeca] = useState<string>("inicial");
   const [pRequerente, setPRequerente] = useState("");
   const [pRequerido, setPRequerido] = useState("");
@@ -1781,6 +1812,149 @@ Usuário: ${texto}`;
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ABA 9: GESTÃO FINANCEIRA & HONORÁRIOS */}
+      {activeTab === "financeiro" && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="p-5 bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-800 text-white rounded-2xl flex items-center gap-4 shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0">
+              <MoneyIcon className="w-7 h-7 text-emerald-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">Gestão Financeira &amp; Honorários</h2>
+              <p className="text-emerald-200 text-sm">Controle de caixa do escritório, faturamento, honorários sucumbenciais e tabela OAB.</p>
+            </div>
+          </div>
+
+          {/* KPI Cards de Resumo Financeiro */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="card p-5 border-l-4 border-l-emerald-500 bg-white">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Receitas do Mês</span>
+              <p className="text-2xl font-black text-emerald-700 mt-1">
+                R$ {finLancamentos.filter(l => l.tipo === "receita" && l.status === "Pago").reduce((acc, l) => acc + l.valor, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1">Honorários + Sucumbências pagas</p>
+            </div>
+
+            <div className="card p-5 border-l-4 border-l-red-500 bg-white">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Despesas / Custas</span>
+              <p className="text-2xl font-black text-red-600 mt-1">
+                R$ {finLancamentos.filter(l => l.tipo === "despesa").reduce((acc, l) => acc + l.valor, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1">Custas judiciais e operacionais</p>
+            </div>
+
+            <div className="card p-5 border-l-4 border-l-amber-500 bg-white">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">A Receber (Pendente)</span>
+              <p className="text-2xl font-black text-amber-700 mt-1">
+                R$ {finLancamentos.filter(l => l.status === "Pendente").reduce((acc, l) => acc + l.valor, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-1">Acordos e parcelas vincendas</p>
+            </div>
+          </div>
+
+          {/* Form de Novo Lançamento */}
+          <div className="card space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <MoneyIcon className="w-5 h-5 text-emerald-600" />
+              <h2 className="font-bold text-slate-900 text-base">Novo Lançamento Financeiro</h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              <div>
+                <label className="label">Tipo</label>
+                <select className="input" value={finTipo} onChange={(e) => setFinTipo(e.target.value as "receita" | "despesa")}>
+                  <option value="receita">🟢 Receita (Entrada)</option>
+                  <option value="despesa">🔴 Despesa (Saída)</option>
+                </select>
+              </div>
+
+              <div className="lg:col-span-2">
+                <label className="label">Descrição do Lançamento</label>
+                <input type="text" className="input" placeholder="Ex: Honorários Iniciais, Custas..." value={finDescricao} onChange={(e) => setFinDescricao(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="label">Cliente / Processo</label>
+                <input type="text" className="input" placeholder="Nome do cliente..." value={finCliente} onChange={(e) => setFinCliente(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="label">Valor (R$)</label>
+                <input type="number" step="0.01" className="input" placeholder="0,00" value={finValor} onChange={(e) => setFinValor(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={adicionarLancamento}
+                disabled={!finDescricao || !finValor}
+                className="btn-primary bg-emerald-700 hover:bg-emerald-800 text-xs px-6 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                + Registrar Lançamento
+              </button>
+            </div>
+          </div>
+
+          {/* Extrato de Lançamentos */}
+          <div className="card space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-bold text-slate-900 text-base">Extrato Financeiro &amp; Honorários</h3>
+              </div>
+              <span className="text-xs bg-slate-100 text-slate-600 font-bold px-3 py-1 rounded-full">
+                {finLancamentos.length} Lançamentos
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left text-slate-700">
+                <thead className="bg-slate-50 uppercase text-[10px] font-bold text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th className="p-3">Data</th>
+                    <th className="p-3">Tipo</th>
+                    <th className="p-3">Descrição</th>
+                    <th className="p-3">Cliente</th>
+                    <th className="p-3">Categoria</th>
+                    <th className="p-3">Valor</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {finLancamentos.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/50">
+                      <td className="p-3 text-slate-500 font-mono">{item.data}</td>
+                      <td className="p-3">
+                        <span className={`font-extrabold px-2 py-0.5 rounded text-[10px] ${
+                          item.tipo === "receita" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                        }`}>
+                          {item.tipo === "receita" ? "+ RECEITA" : "- DESPESA"}
+                        </span>
+                      </td>
+                      <td className="p-3 font-bold text-slate-900">{item.descricao}</td>
+                      <td className="p-3">{item.cliente}</td>
+                      <td className="p-3 text-slate-500">{item.categoria}</td>
+                      <td className={`p-3 font-mono font-bold ${item.tipo === "receita" ? "text-emerald-700" : "text-red-600"}`}>
+                        {item.tipo === "receita" ? "+ " : "- "}
+                        R$ {item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-3">
+                        <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                          item.status === "Pago" ? "bg-emerald-50 text-emerald-700" : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

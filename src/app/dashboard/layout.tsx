@@ -19,6 +19,7 @@ import {
   User,
   Bot,
   FileSignature,
+  DollarSign,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -29,11 +30,12 @@ const mainNavItems = [
 const ferramentasNavItems = [
   { href: "/dashboard/ferramentas?tab=calculadoras", tab: "calculadoras", label: "Cálculos Jurídicos (13)", icon: Calculator },
   { href: "/dashboard/ferramentas?tab=consultas", tab: "consultas", label: "Consultas Legais (13)", icon: Search },
-  { href: "/dashboard/ferramentas?tab=outros", tab: "outros", label: "Recursos & IA (3)", icon: Sparkles },
+  { href: "/dashboard/ferramentas?tab=outros", tab: "outros", label: "Recursos & IA (2)", icon: Sparkles },
   { href: "/dashboard/ferramentas?tab=procuracao", tab: "procuracao", label: "Gerador de Procuração", icon: FileCheck },
   { href: "/dashboard/ferramentas?tab=peticoes", tab: "peticoes", label: "Petições IA (Gemini)", icon: Bot },
   { href: "/dashboard/ferramentas?tab=assistente", tab: "assistente", label: "I.A. Assistente Jurídico", icon: Sparkles },
   { href: "/dashboard/ferramentas?tab=jurisprudencia", tab: "jurisprudencia", label: "Pesquisador de Jurisprudências", icon: Scale },
+  { href: "/dashboard/ferramentas?tab=financeiro", tab: "financeiro", label: "Gestão Financeira & Honorários", icon: DollarSign },
   { href: "/dashboard/ferramentas?tab=assinatura", tab: "assinatura", label: "Assinatura Eletrônica (ClicSign)", icon: FileSignature },
 ];
 
