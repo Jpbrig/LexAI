@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { Users, Search, Plus, Mail, Phone, MapPin, FileText, DollarSign, Calendar, ChevronRight, CheckCircle2 } from "lucide-react";
 
+type ProcessoVinculado = {
+  numeroCnj: string;
+  tribunal: string;
+  acao: string;
+};
+
 type Cliente = {
   id: string;
   nome: string;
@@ -12,6 +18,7 @@ type Cliente = {
   telefone: string;
   cidade: string;
   processosCount: number;
+  listaProcessos: ProcessoVinculado[];
   totalPago: number;
   status: "Ativo" | "Inativo";
   dataCadastro: string;
@@ -29,6 +36,10 @@ export default function ClientesPage() {
       telefone: "(11) 98765-4321",
       cidade: "São Paulo / SP",
       processosCount: 2,
+      listaProcessos: [
+        { numeroCnj: "0012345-67.2023.8.26.0100", tribunal: "TJSP", acao: "Ação Trabalhista — Reclamatória" },
+        { numeroCnj: "1054321-99.2024.8.26.0100", tribunal: "TJSP", acao: "Revisão Contratual" }
+      ],
       totalPago: 11700,
       status: "Ativo",
       dataCadastro: "15/01/2026",
@@ -43,6 +54,11 @@ export default function ClientesPage() {
       telefone: "(11) 3344-5566",
       cidade: "Campinas / SP",
       processosCount: 5,
+      listaProcessos: [
+        { numeroCnj: "0098765-43.2022.4.03.6100", tribunal: "TRF3", acao: "Execução Fiscal Federal" },
+        { numeroCnj: "5001234-12.2023.8.26.0114", tribunal: "TJSP", acao: "Cobrança Indenizatória" },
+        { numeroCnj: "0004567-89.2024.5.02.0001", tribunal: "TRT2", acao: "Ação Trabalhista Plural" }
+      ],
       totalPago: 45000,
       status: "Ativo",
       dataCadastro: "10/11/2025",
@@ -57,6 +73,9 @@ export default function ClientesPage() {
       telefone: "(21) 99887-6655",
       cidade: "Rio de Janeiro / RJ",
       processosCount: 1,
+      listaProcessos: [
+        { numeroCnj: "0801234-55.2024.8.19.0001", tribunal: "TJRJ", acao: "Ação Indenizatória (Extravio de Bagagem)" }
+      ],
       totalPago: 3500,
       status: "Ativo",
       dataCadastro: "02/02/2026",
@@ -90,6 +109,7 @@ export default function ClientesPage() {
       telefone,
       cidade: cidade || "São Paulo / SP",
       processosCount: 0,
+      listaProcessos: [],
       totalPago: 0,
       status: "Ativo",
       dataCadastro: new Date().toLocaleDateString("pt-BR"),
@@ -280,6 +300,40 @@ export default function ClientesPage() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Processos Ativos</span>
                 <p className="text-lg font-black mt-1">{selectedCliente.processosCount} Ações</p>
               </div>
+            </div>
+
+            {/* Lista de Processos Vinculados */}
+            <div className="card space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="font-bold text-xs text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-amber-500" />
+                  Processos Vinculados ({selectedCliente.listaProcessos?.length || 0})
+                </h3>
+              </div>
+
+              {selectedCliente.listaProcessos && selectedCliente.listaProcessos.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedCliente.listaProcessos.map((proc, idx) => (
+                    <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 hover:border-amber-400 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-900 rounded font-mono">
+                          {proc.tribunal}
+                        </span>
+                        <a
+                          href={`/dashboard/processos?busca=${proc.numeroCnj}`}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                        >
+                          Ver no LexAI ↗
+                        </a>
+                      </div>
+                      <p className="font-mono text-xs font-bold text-slate-900">{proc.numeroCnj}</p>
+                      <p className="text-xs text-slate-600">{proc.acao}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">Nenhum processo vinculado cadastrado.</p>
+              )}
             </div>
 
             {/* Observações / Histórico de Atendimento */}
