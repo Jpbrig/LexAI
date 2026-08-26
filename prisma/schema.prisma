@@ -43,6 +43,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  passwordHash  String?   // Hash bcrypt da senha (null = autenticação via OAuth)
   oab           String?   // Número OAB do advogado
   plano         Plano     @default(FREE)
   stripeCustomerId String? @unique

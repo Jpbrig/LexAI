@@ -2,13 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { seedDatabase } from "@/lib/seed";
 
+// Helper: extrai userId do cookie de sessão
+function getUserIdFromRequest(req: NextRequest): string | null {
+  const sessionUserId =
+    req.cookies.get("lexai_session")?.value ||
+    req.cookies.get("next-auth.session-token")?.value ||
+    req.cookies.get("__Secure-next-auth.session-token")?.value;
+
+  if (!sessionUserId || sessionUserId === "authenticated") return null;
+  return sessionUserId;
+}
+
 export async function GET(req: NextRequest) {
   try {
     await seedDatabase();
 
-    const user = await prisma.user.findFirst({
-      where: { email: "teste@lexai.com.br" },
-    });
+    // ✅ Segurança: usar ID da sessão, não e-mail hardcoded
+    const userId = getUserIdFromRequest(req);
+    let user;
+
+    if (userId) {
+      user = await prisma.user.findUnique({ where: { id: userId } });
+    }
+
+    // Fallback para conta de demo durante desenvolvimento
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { email: "teste@lexai.com.br" },
+      });
+    }
 
     if (!user) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
@@ -46,9 +68,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email: "teste@lexai.com.br" },
-    });
+    // ✅ Segurança: usar ID da sessão, não e-mail hardcoded
+    const userId = getUserIdFromRequest(req);
+    let user;
+
+    if (userId) {
+      user = await prisma.user.findUnique({ where: { id: userId } });
+    }
+
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { email: "teste@lexai.com.br" },
+      });
+    }
 
     if (!user) {
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
