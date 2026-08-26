@@ -32,8 +32,8 @@ import {
 
 function FerramentasContent() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | null;
-  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura">("calculadoras");
+  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | "jurisprudencia" | null;
+  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | "jurisprudencia">("calculadoras");
 
   useEffect(() => {
     if (tabParam) {
@@ -277,6 +277,53 @@ Usuário: ${texto}`;
       setSigConteudoDocumento(content);
     };
     reader.readAsText(file);
+  }
+
+  // Pesquisador de Jurisprudências state
+  type JurisprudenciaItem = { tribunal: string; numeroProcesso: string; relator: string; orgaoJulgador: string; dataPublicacao: string; titulo: string; ementa: string; citacaoPeticao: string; fonteUrl: string };
+  const [jurTermo, setJurTermo] = useState("");
+  const [jurTribunal, setJurTribunal] = useState("TODOS");
+  const [jurResultados, setJurResultados] = useState<JurisprudenciaItem[]>([]);
+  const [loadingJur, setLoadingJur] = useState(false);
+  const [erroJur, setErroJur] = useState("");
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
+
+  async function buscarJurisprudencia() {
+    if (!jurTermo.trim()) return;
+    setLoadingJur(true);
+    setErroJur("");
+    setJurResultados([]);
+
+    const geminiKey = typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : "";
+
+    try {
+      const res = await fetch("/api/jurisprudencia/buscar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          termo: jurTermo,
+          tribunal: jurTribunal,
+          geminiKey
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.sucesso) {
+        setJurResultados(data.resultados || []);
+      } else {
+        setErroJur(data.error || "Erro ao buscar jurisprudência.");
+      }
+    } catch {
+      setErroJur("Erro de conexão com o servidor.");
+    } finally {
+      setLoadingJur(false);
+    }
+  }
+
+  function copiarCitacao(texto: string, idx: string) {
+    navigator.clipboard.writeText(texto);
+    setCopiadoId(idx);
+    setTimeout(() => setCopiadoId(null), 2500);
   }
 
   // Petições IA state
@@ -734,10 +781,8 @@ Usuário: ${texto}`;
 
   const outrosLista = [
     { id: "novos_clientes", name: "Captação de Novos Clientes", icon: Users, desc: "Conexão com potenciais clientes jurídicos" },
-    { id: "assinatura", name: "Assinatura Eletrônica", icon: FileSignature, desc: "Envio de contratos para assinatura digital com validade legal" },
     { id: "ia_sites", name: "I.A. Criador de Sites para Escritórios", icon: Globe, desc: "Crie o site do seu escritório em 5 minutos" },
     { id: "financeiro", name: "Gestão Financeira & Honorários", icon: MoneyIcon, desc: "Controle de caixa, faturamento e honorários sucumbenciais" },
-    { id: "jurisprudencias", name: "Pesquisador de Jurisprudências", icon: Scale, desc: "Busca unificada em acórdãos do STF, STJ e TJs" },
   ];
 
   return (
@@ -1531,6 +1576,211 @@ Usuário: ${texto}`;
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ABA 8: PESQUISADOR DE JURISPRUDÊNCIAS */}
+      {activeTab === "jurisprudencia" && (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl flex items-center gap-4 shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
+              <Scale className="w-7 h-7 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">Pesquisador de Jurisprudências Unificado</h2>
+              <p className="text-slate-300 text-sm">Busca inteligente de acórdãos, súmulas e ementas nos acervos do STF, STJ, TST e TJs com citação pronta para petição.</p>
+            </div>
+            <a href="/dashboard/configuracoes" className="ml-auto flex-shrink-0 text-xs bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-xl px-3 py-2 hover:bg-amber-500/30 transition-colors">
+              ⚙️ Configurar Chave Gemini
+            </a>
+          </div>
+
+          {/* Barra de Busca & Filtros */}
+          <div className="card space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <Search className="w-5 h-5 text-amber-500" />
+              <h2 className="font-bold text-slate-900 text-base">Pesquisar Acórdãos e Precedentes</h2>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pb-2">
+              <span className="text-xs font-bold text-slate-500 mr-1">Filtrar por Tribunal:</span>
+              {[
+                { id: "TODOS", label: "Todos os Tribunais" },
+                { id: "STF", label: "STF (Supremo Tribunal Federal)" },
+                { id: "STJ", label: "STJ (Superior Tribunal de Justiça)" },
+                { id: "TST", label: "TST (Tribunal Superior do Trabalho)" },
+                { id: "TJSP", label: "TJSP" },
+                { id: "TJRJ", label: "TJRJ" },
+                { id: "TRF", label: "TRFs (Federais)" },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setJurTribunal(t.id)}
+                  className={`text-xs px-3 py-1.5 rounded-full font-bold transition-all ${
+                    jurTribunal === t.id
+                      ? "bg-amber-500 text-white shadow-sm"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <input
+                type="text"
+                className="input flex-1 text-sm font-medium"
+                placeholder="Ex: Extravio de bagagem dano moral, justa causa embriaguez TST, juros abusivos financiamento STJ..."
+                value={jurTermo}
+                onChange={(e) => setJurTermo(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") buscarJurisprudencia();
+                }}
+              />
+              <button
+                onClick={buscarJurisprudencia}
+                disabled={loadingJur || !jurTermo.trim()}
+                className="btn-primary px-6 text-sm justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingJur ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Pesquisando...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4 text-amber-400" />
+                    Buscar Jurisprudência
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Sugestões Rápidas de Busca */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              "Dano moral in re ipsa extravio de bagagem STJ",
+              "Rescisão indireta atraso FGTS e salários TST",
+              "Inscrição indevida SPC Serasa dano moral",
+              "Tema 1.046 STF negociação coletiva",
+              "Ação revisional juros taxa média Bacen",
+              "Descumprimento de dever conjugal dano moral STJ"
+            ].map((sugestao) => (
+              <button
+                key={sugestao}
+                onClick={() => { setJurTermo(sugestao); }}
+                className="text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50 transition-all"
+              >
+                🔍 {sugestao}
+              </button>
+            ))}
+          </div>
+
+          {/* Mensagem de Erro */}
+          {erroJur && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-800">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm">Erro na busca de jurisprudência</p>
+                <p className="text-sm mt-0.5">{erroJur}</p>
+                {erroJur.includes("Chave") && (
+                  <a href="/dashboard/configuracoes" className="text-xs underline font-bold mt-1 inline-block">
+                    → Ir para Configurações e cadastrar chave Gemini
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Lista de Resultados Estruturados em Cards */}
+          {jurResultados.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  {jurResultados.length} Precedentes Encontrados para &quot;{jurTermo}&quot;
+                </span>
+                <span className="badge badge-success text-[10px]">Fontes Oficiais &amp; Jusbrasil</span>
+              </div>
+
+              {jurResultados.map((item, idx) => (
+                <div key={idx} className="card hover:border-amber-300 transition-all space-y-4 shadow-sm">
+                  {/* Header do Card */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-xs px-2.5 py-1 bg-slate-900 text-amber-400 rounded-lg">
+                        {item.tribunal}
+                      </span>
+                      <span className="font-bold text-slate-900 text-sm">{item.numeroProcesso}</span>
+                      {item.orgaoJulgador && (
+                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                          {item.orgaoJulgador}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium">
+                      Relator: <strong className="text-slate-800">{item.relator}</strong> • {item.dataPublicacao}
+                    </div>
+                  </div>
+
+                  {/* Título do Tema */}
+                  <h3 className="font-bold text-slate-900 text-base leading-snug">{item.titulo}</h3>
+
+                  {/* Ementa */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs font-serif leading-relaxed text-slate-800 text-justify">
+                    <p className="font-bold uppercase tracking-wider text-[10px] text-slate-500 mb-2 border-b border-slate-200 pb-1">
+                      EMENTA OFICIAL
+                    </p>
+                    {item.ementa}
+                  </div>
+
+                  {/* Citação Formatada para Petição */}
+                  {item.citacaoPeticao && (
+                    <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3 text-xs space-y-1">
+                      <span className="font-bold text-amber-900 text-[11px] flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                        Formatação ABNT para Citação em Petição:
+                      </span>
+                      <p className="font-mono text-[11px] text-amber-950 italic select-all">
+                        {item.citacaoPeticao}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Ações do Card */}
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      onClick={() => copiarCitacao(item.citacaoPeticao || item.ementa, String(idx))}
+                      className="btn-primary text-xs py-2 px-4"
+                    >
+                      {copiadoId === String(idx) ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                          Citação Copiada!
+                        </>
+                      ) : (
+                        <>
+                          📋 Copiar Citação p/ Petição
+                        </>
+                      )}
+                    </button>
+
+                    <a
+                      href={item.fonteUrl || `https://www.jusbrasil.com.br/jurisprudencia/busca?q=${encodeURIComponent(jurTermo)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-outline text-xs py-2 px-4 flex items-center gap-1.5"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-slate-500" />
+                      Ver no Jusbrasil / Fonte ↗
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
