@@ -193,12 +193,13 @@ export async function POST(req: NextRequest) {
       // 5. Veículo / Renavam / Rastreamento (DENATRAN / SINESP Gov)
       case "veiculo":
       case "rastreio_veiculo": {
-        const ehPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i.test(termoLimpo) || termoLimpo.length === 7;
-        const ehRenavam = termoNumerico.length === 11 || termoNumerico.length === 9;
+        const ehPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i.test(termoLimpo) || (termoLimpo.length === 7 && /[A-Z]/i.test(termoLimpo));
+        const ehRenavam = termoNumerico.length === 9 || (termoNumerico.length === 11 && !termoLimpo.includes(".") && !termoLimpo.includes("-"));
+        const ehCpfCnpj = termoNumerico.length === 11 || termoNumerico.length === 14;
 
-        if (!ehPlaca && !ehRenavam && tipo === "veiculo") {
+        if (tipo === "veiculo" && !ehPlaca && !ehRenavam) {
           return NextResponse.json(
-            { error: "Para consultar Veículo/Renavam, insira a Placa (ex: ABC1D23) ou o número do RENAVAM." },
+            { error: "Erro de entrada: A ferramenta 'Dados do Veículo' exige uma Placa válida (ex: ABC1D23) ou número do RENAVAM (9 a 11 dígitos). Para buscar veículos por CPF/CNPJ do dono, utilize a ferramenta 'Rastreamento de Veículo'." },
             { status: 400 }
           );
         }
@@ -209,8 +210,9 @@ export async function POST(req: NextRequest) {
           fonte: "SENATRAN / SINESP - Secretaria Nacional de Trânsito",
           dados: {
             identificadorConsultado: termoLimpo.toUpperCase(),
-            tipoEntrada: ehPlaca ? "PLACA" : ehRenavam ? "RENAVAM" : "CPF/CNPJ PROPRIETÁRIO",
+            tipoEntrada: ehPlaca ? "PLACA DO VEÍCULO" : ehRenavam ? "RENAVAM" : "CPF/CNPJ DO PROPRIETÁRIO",
             placaVeiculo: ehPlaca ? termoLimpo.toUpperCase() : "ABC-1D23",
+            renavam: ehRenavam ? termoNumerico : "00987654321",
             chassi: "9BWZZZ377VT" + Math.floor(100000 + Math.random() * 900000),
             marcaModelo: "VOLKSWAGEN / GOL 1.6",
             anoFabricacaoModelo: "2021/2022",
