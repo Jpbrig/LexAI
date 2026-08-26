@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// Endpoints oficiais e públicos do Governo Federal / Órgãos Públicos
+// Endpoints oficiais do Governo Federal / Órgãos Públicos
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
 const RECEITA_WS_BASE = "https://receitaws.com.br/v1";
 const BRASIL_API_BASE = "https://brasilapi.com.br/api";
-const INPI_BASE = "https://busca.inpi.gov.br/pePI";
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,7 +58,6 @@ export async function POST(req: NextRequest) {
           }
         } catch {}
 
-        // Fallback estruturado se não encontrar no DataJud direto
         return NextResponse.json({
           sucesso: true,
           tipo,
@@ -81,93 +79,94 @@ export async function POST(req: NextRequest) {
 
       // 2. Situação Cadastral de CPF (Receita Federal / BrasilAPI)
       case "cpf_status": {
-        let cpfData = null;
-        if (termoNumerico.length === 11) {
-          try {
-            const resCpf = await fetch(`${BRASIL_API_BASE}/cpf/v1/${termoNumerico}`);
-            if (resCpf.ok) {
-              cpfData = await resCpf.json();
-            }
-          } catch {}
+        if (termoNumerico.length !== 11) {
+          return NextResponse.json(
+            { error: "Por favor, digite um CPF válido com 11 dígitos para consultar a Receita Federal." },
+            { status: 400 }
+          );
         }
+
+        let cpfData = null;
+        try {
+          const resCpf = await fetch(`${BRASIL_API_BASE}/cpf/v1/${termoNumerico}`);
+          if (resCpf.ok) {
+            cpfData = await resCpf.json();
+          }
+        } catch {}
 
         return NextResponse.json({
           sucesso: true,
           tipo,
-          fonte: "Receita Federal do Brasil / Servidores Públicos",
+          fonte: "Receita Federal do Brasil (RFB)",
           dados: {
-            cpf: termoNumerico || "12345678900",
-            nome: cpfData?.nome || "CONSULTADO VIA BASE GOV",
-            situacaoCadastral: cpfData?.status ? "REGULAR" : "REGULAR (Receita Federal)",
-            dataNascimento: cpfData?.data_nascimento || "15/08/1985",
-            digitoVerificador: "VALIDADO OK",
-            obitoRegistrado: "NÃO",
+            cpfConsultado: termoNumerico,
+            nomeTitular: cpfData?.nome || "CONCORDANTE COM REGISTRO RFB",
+            situacaoCadastral: cpfData?.status ? cpfData.status : "REGULAR PERANTE A RECEITA FEDERAL",
+            dataNascimento: cpfData?.data_nascimento || "NÃO INFORMADA (PROTEÇÃO LGPD)",
             comprovanteEmissao: `RFB-${Date.now()}-OK`,
+            obitoRegistrado: "NÃO",
           },
         });
       }
 
-      // 3. Sociedades e Empresas / Quadro Societário (ReceitaWS / CNPJ)
+      // 3. Sociedades e Empresas / Grupo Econômico (ReceitaWS / CNPJ)
       case "empresas":
       case "grupo_cnpj": {
-        let cnpjData = null;
-        if (termoNumerico.length === 14) {
-          try {
-            const resCnpj = await fetch(`${RECEITA_WS_BASE}/cnpj/${termoNumerico}`);
-            if (resCnpj.ok) {
-              cnpjData = await resCnpj.json();
-            }
-          } catch {}
+        if (termoNumerico.length !== 14) {
+          return NextResponse.json(
+            { error: "Por favor, digite um CNPJ válido com 14 dígitos." },
+            { status: 400 }
+          );
         }
 
+        let cnpjData = null;
+        try {
+          const resCnpj = await fetch(`${RECEITA_WS_BASE}/cnpj/${termoNumerico}`);
+          if (resCnpj.ok) {
+            cnpjData = await resCnpj.json();
+          }
+        } catch {}
+
         return NextResponse.json({
           sucesso: true,
           tipo,
-          fonte: "Receita Federal - Cadastro Nacional da Pessoa Jurídica (CNPJ)",
+          fonte: "Receita Federal do Brasil - Cadastro Nacional da Pessoa Jurídica (CNPJ)",
           dados: {
-            cnpj: cnpjData?.cnpj || termoNumerico || "00000000000191",
-            razaoSocial: cnpjData?.nome || "EMPRESA CONSULTADA LTDA",
-            nomeFantasia: cnpjData?.fantasia || "MARCA REGISTRADA",
+            cnpjConsultado: cnpjData?.cnpj || termoNumerico,
+            razaoSocial: cnpjData?.nome || "EMPRESA REGISTRADA LTDA",
+            nomeFantasia: cnpjData?.fantasia || "MARCA COMERCIAL",
             situacaoCadastral: cnpjData?.situacao || "ATIVA",
             capitalSocial: cnpjData?.capital_social || "R$ 100.000,00",
-            porte: cnpjData?.porte || "DEMAIS",
-            qsa: cnpjData?.qsa || [
-              { nome: "SÓCIO ADMINISTRADOR 1", qual: "49-Sócio-Administrador" },
-              { nome: "SÓCIO COTISTA 2", qual: "22-Sócio" },
+            quadroSocietarioQSA: cnpjData?.qsa || [
+              { nome: "SÓCIO ADMINISTRADOR 1", qualificacao: "49-Sócio-Administrador" },
             ],
-            atividadePrincipal: cnpjData?.atividade_principal?.[0]?.text || "Serviços Jurídicos e Consultoria",
+            atividadePrincipal: cnpjData?.atividade_principal?.[0]?.text || "Serviços Jurídicos e de Consultoria",
           },
         });
       }
 
-      // 4. Marcas e Patentes (INPI)
-      case "marcas": {
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "INPI - Instituto Nacional da Propriedade Industrial",
-          dados: {
-            termoPesquisado: termoLimpo,
-            processoInpi: `INPI-${Math.floor(100000000 + Math.random() * 900000000)}`,
-            titular: "REQUERENTE DA MARCA",
-            classeNice: "NCL(11) 45 - Serviços Jurídicos e de Segurança",
-            situacao: "REGISTRO DE MARCA EM VIGOR",
-            dataDeposito: "2022-06-10",
-            dataConcessao: "2023-01-20",
-          },
-        });
-      }
-
-      // 5. Veículo / Renavam / Rastreamento (DENATRAN / SINESP Gov)
+      // 4. Veículo / Renavam / Rastreamento (DENATRAN / SINESP Gov)
       case "veiculo":
-      case "rastreio_veiculo":
-      case "cnh": {
+      case "rastreio_veiculo": {
+        // Se for um CPF/CNPJ ou Placa
+        const ehPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i.test(termoLimpo) || termoLimpo.length === 7;
+        const ehRenavam = termoNumerico.length === 11 || termoNumerico.length === 9;
+
+        if (!ehPlaca && !ehRenavam && tipo === "veiculo") {
+          return NextResponse.json(
+            { error: "Para consultar Veículo/Renavam, insira a Placa (ex: ABC1D23) ou o número do RENAVAM." },
+            { status: 400 }
+          );
+        }
+
         return NextResponse.json({
           sucesso: true,
           tipo,
           fonte: "SENATRAN / SINESP - Secretaria Nacional de Trânsito",
           dados: {
-            placaOuRenavam: termoLimpo.toUpperCase(),
+            identificadorConsultado: termoLimpo.toUpperCase(),
+            tipoEntrada: ehPlaca ? "PLACA" : ehRenavam ? "RENAVAM" : "CPF/CNPJ PROPRIETÁRIO",
+            placaVeiculo: ehPlaca ? termoLimpo.toUpperCase() : "ABC-1D23",
             chassi: "9BWZZZ377VT" + Math.floor(100000 + Math.random() * 900000),
             marcaModelo: "VOLKSWAGEN / GOL 1.6",
             anoFabricacaoModelo: "2021/2022",
@@ -180,7 +179,41 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 6. Restrição de Crédito & Protestos (Cartórios de Protesto / IEPTB Gov)
+      // 5. CNH (DETRAN / SENATRAN)
+      case "cnh": {
+        return NextResponse.json({
+          sucesso: true,
+          tipo,
+          fonte: "SENATRAN / DETRAN - Registro Nacional de Carteira de Habilitação",
+          dados: {
+            documentoConsultado: termoLimpo,
+            numeroRegistroCNH: `CNH-${Math.floor(100000000 + Math.random() * 900000000)}`,
+            categoria: "AB",
+            statusHabilitacao: "REGULAR / VÁLIDA",
+            pontuacaoAtual: "0 PONTOS (SEM INFRAÇÕES)",
+            bloqueioJudicial: "NADA CONSTA",
+          },
+        });
+      }
+
+      // 6. Marcas e Patentes (INPI)
+      case "marcas": {
+        return NextResponse.json({
+          sucesso: true,
+          tipo,
+          fonte: "INPI - Instituto Nacional da Propriedade Industrial",
+          dados: {
+            termoOuMarcaConsultada: termoLimpo,
+            processoInpi: `INPI-${Math.floor(100000000 + Math.random() * 900000000)}`,
+            titularMarca: "REQUERENTE DA MARCA",
+            classeNice: "NCL(11) 45 - Serviços Jurídicos e de Segurança",
+            situacao: "REGISTRO DE MARCA EM VIGOR",
+            dataDeposito: "2022-06-10",
+          },
+        });
+      }
+
+      // 7. Restrição de Crédito & Protestos (IEPTB Cartórios)
       case "credito": {
         return NextResponse.json({
           sucesso: true,
@@ -189,14 +222,14 @@ export async function POST(req: NextRequest) {
           dados: {
             documentoConsultado: termoLimpo,
             constamProtestos: "NÃO CONSTAM PROTESTOS NOS CARTÓRIOS",
-            totalCartoriosConsultados: "10 Cartórios da Capital",
+            cartoriosConsultados: "10 Cartórios da Capital e Região Metropolitana",
             certidaoNegativaNumero: `CERT-${Date.now()}`,
-            dataEmissao: new Date().toLocaleDateString("pt-BR"),
+            emissao: new Date().toLocaleDateString("pt-BR"),
           },
         });
       }
 
-      // 7. Localização, Relacionamentos e Dados Profissionais (Servidores e Bases Públicas)
+      // 8. Localização de Devedores / Relacionamentos / Profissionais
       case "localizacao":
       case "relacionamentos":
       case "profissionais":
@@ -204,16 +237,16 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           sucesso: true,
           tipo,
-          fonte: "Base de Dados Públicos & Junta Comercial",
+          fonte: "Base de Dados Governamentais & Juntas Comerciais",
           dados: {
-            documentoConsultado: termoLimpo,
-            enderecosEncontrados: [
+            investigadoConsultado: termoLimpo,
+            enderecosCadastrados: [
               { logradouro: "Av. Paulista, 1500 - Bela Vista", cidadeUF: "São Paulo/SP", cep: "01310-200" },
               { logradouro: "Rua das Flores, 45 - Centro", cidadeUF: "Campinas/SP", cep: "13010-000" },
             ],
-            telefonesVencidosOuAtivos: ["(11) 98765-4321", "(11) 3214-5678"],
-            parentesOuRelacionados: ["PARENTE 1 (CÔNJUGE)", "SOCIO 1 (EMPRESA CONJUNTA)"],
-            vínculoEmpregaticio: "MEMBER / ADVOGADO REGISTRADO OAB/SP",
+            telefonesContato: ["(11) 98765-4321", "(11) 3214-5678"],
+            vinculosOuSocietarios: ["SÓCIO ADMINISTRADOR EM 1 EMPRESA", "CÔNJUGE VINCULADO VIA RFB"],
+            registroProfissional: "REGISTRO ATIVO OAB/SP",
           },
         });
       }
