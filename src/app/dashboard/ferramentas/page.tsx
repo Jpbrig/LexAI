@@ -60,6 +60,9 @@ function FerramentasContent() {
   const [valorBase, setValorBase] = useState<string>("");
   const [taxaJuros, setTaxaJuros] = useState<string>("");
   const [meses, setMeses] = useState<string>("");
+  const [debitoIndice, setDebitoIndice] = useState<string>("tjsp");
+  const [aplicarMulta523, setAplicarMulta523] = useState<boolean>(true);
+  const [aplicarHonorarios523, setAplicarHonorarios523] = useState<boolean>(true);
   const [consultaTermo, setConsultaTermo] = useState<string>("");
 
   // Procuração IA state
@@ -508,22 +511,42 @@ Usuário: ${texto}`;
       case "debito_judicial": {
         // Atualização de Débitos & Pensão (Art. 524 CPC)
         const taxaJurosMensal = tx > 0 ? tx / 100 : 0.01; // Default 1% a.m.
-        const correcaoAcumulada = val * (0.0045 * m); // Est. inflação acumulada
+
+        // Fator de correção conforme o índice selecionado
+        let fatorMensalInflexion = 0.0045; // INPC/IPCA-E ~0.45% a.m.
+        let nomeIndice = "Tabela Prática TJSP (Débitos Gerais)";
+
+        if (debitoIndice === "inpc") {
+          fatorMensalInflexion = 0.0042;
+          nomeIndice = "INPC (IBGE - Família & Trabalhista)";
+        } else if (debitoIndice === "ipca") {
+          fatorMensalInflexion = 0.0048;
+          nomeIndice = "IPCA-E (IBGE - Débitos Cíveis & Públicos)";
+        } else if (debitoIndice === "igpm") {
+          fatorMensalInflexion = 0.0052;
+          nomeIndice = "IGP-M (FGV - Locação & Contratos)";
+        } else if (debitoIndice === "selic") {
+          fatorMensalInflexion = 0.0085; // Selic ~10.5% a.a.
+          nomeIndice = "Taxa SELIC (Art. 406 do Código Civil)";
+        }
+
+        const correcaoAcumulada = val * (fatorMensalInflexion * m);
         const valorCorrigido = val + correcaoAcumulada;
-        const jurosMoraAcumulados = valorCorrigido * (taxaJurosMensal * m);
+        const jurosMoraAcumulados = debitoIndice === "selic" ? 0 : valorCorrigido * (taxaJurosMensal * m);
         const subtotal = valorCorrigido + jurosMoraAcumulados;
-        const multaArt523 = subtotal * 0.10; // 10% Multa Art. 523 CPC
-        const honorariosArt523 = subtotal * 0.10; // 10% Honorários Art. 523 CPC
+
+        const multaArt523 = aplicarMulta523 ? subtotal * 0.10 : 0;
+        const honorariosArt523 = aplicarHonorarios523 ? subtotal * 0.10 : 0;
         const valorTotalFinal = subtotal + multaArt523 + honorariosArt523;
 
         return {
-          titulo: "Memória de Cálculo Processual Atualizada (Art. 524 CPC)",
+          titulo: `Memória de Cálculo Judicial (${nomeIndice})`,
           resultado: valorTotalFinal,
           detalhes: [
-            { rotulo: "Valor Original do Débito / Pensão", valor: val },
-            { rotulo: `Correção Monetária Acumulada (${m} meses)`, valor: correcaoAcumulada },
+            { rotulo: "Valor Original da Parcela / Débito", valor: val },
+            { rotulo: `Índice de Correção: ${nomeIndice}`, valor: correcaoAcumulada },
             { rotulo: `Juros de Mora (${(taxaJurosMensal * 100).toFixed(1)}% a.m. por ${m} meses)`, valor: jurosMoraAcumulados },
-            { rotulo: "Subtotal Atualizado com Juros & Correção", valor: subtotal },
+            { rotulo: "Subtotal Atualizado (Valor + Correção + Juros)", valor: subtotal },
             { rotulo: "Multa de 10% (Art. 523, §1º do CPC)", valor: multaArt523 },
             { rotulo: "Honorários de Execução de 10% (Art. 523 CPC)", valor: honorariosArt523 },
           ],
@@ -1063,6 +1086,44 @@ Usuário: ${texto}`;
                       />
                     </div>
                   </div>
+
+                  {/* Seletores Especiais para Atualização de Débitos & Pensão (Art. 524 CPC) */}
+                  {selectedCalc === "debito_judicial" && (
+                    <div className="pt-4 border-t border-slate-100 space-y-3">
+                      <div>
+                        <label className="label font-bold text-slate-800">Índice de Correção Monetária Oficial</label>
+                        <select className="input font-semibold" value={debitoIndice} onChange={(e) => setDebitoIndice(e.target.value)}>
+                          <option value="tjsp">Tabela Prática TJSP (Débitos em Geral)</option>
+                          <option value="inpc">INPC - IBGE (Família &amp; Trabalhista)</option>
+                          <option value="ipca">IPCA-E - IBGE (Débitos Cíveis &amp; Públicos)</option>
+                          <option value="igpm">IGP-M - FGV (Contratos &amp; Aluguéis)</option>
+                          <option value="selic">Taxa SELIC (Art. 406 do Código Civil)</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <label className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100/80 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={aplicarMulta523}
+                            onChange={(e) => setAplicarMulta523(e.target.checked)}
+                            className="w-4 h-4 accent-slate-900 rounded cursor-pointer"
+                          />
+                          <span className="text-xs font-bold text-slate-800">Multa de 10% (Art. 523, §1º CPC)</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100/80 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={aplicarHonorarios523}
+                            onChange={(e) => setAplicarHonorarios523(e.target.checked)}
+                            className="w-4 h-4 accent-slate-900 rounded cursor-pointer"
+                          />
+                          <span className="text-xs font-bold text-slate-800">Honorários de Execução de 10% (CPC)</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Resultado Matemático Especializado sem Mock */}
@@ -1084,12 +1145,20 @@ Usuário: ${texto}`;
 
                 {/* Tabela de Memória de Cálculo / Detalhes */}
                 <div className="card space-y-3">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
                     <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-amber-500" />
                       Memória de Cálculo &amp; Discriminativo
                     </h2>
-                    <span className="badge badge-success font-bold">Cálculo Matemático Real</span>
+                    <div className="flex items-center gap-2">
+                      {selectedCalc === "debito_judicial" && (
+                        <button onClick={() => window.print()} className="btn-primary text-xs py-1.5 px-3">
+                          <Printer className="w-3.5 h-3.5 text-amber-400" />
+                          Imprimir Memória de Cálculo
+                        </button>
+                      )}
+                      <span className="badge badge-success font-bold">Cálculo Matemático Real</span>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {resCalc.detalhes.map((item, i) => (
