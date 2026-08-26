@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Scale,
   LayoutDashboard,
@@ -25,10 +25,10 @@ const mainNavItems = [
 ];
 
 const ferramentasNavItems = [
-  { href: "/dashboard/ferramentas?tab=calculadoras", label: "Cálculos Jurídicos (13)", icon: Calculator },
-  { href: "/dashboard/ferramentas?tab=consultas", label: "Consultas Legais (12)", icon: Search },
-  { href: "/dashboard/ferramentas?tab=outros", label: "Recursos & IA (8)", icon: Sparkles },
-  { href: "/dashboard/ferramentas?tab=procuracao", label: "Gerador de Procuração", icon: FileCheck },
+  { href: "/dashboard/ferramentas?tab=calculadoras", tab: "calculadoras", label: "Cálculos Jurídicos (13)", icon: Calculator },
+  { href: "/dashboard/ferramentas?tab=consultas", tab: "consultas", label: "Consultas Legais (12)", icon: Search },
+  { href: "/dashboard/ferramentas?tab=outros", tab: "outros", label: "Recursos & IA (8)", icon: Sparkles },
+  { href: "/dashboard/ferramentas?tab=procuracao", tab: "procuracao", label: "Gerador de Procuração", icon: FileCheck },
 ];
 
 const secondaryNavItems = [
@@ -36,13 +36,14 @@ const secondaryNavItems = [
   { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
 ];
 
-export default function DashboardLayout({
+function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   return (
     <div className="flex h-screen bg-slate-50/50 overflow-hidden font-sans">
@@ -118,7 +119,9 @@ export default function DashboardLayout({
                 </p>
               )}
               {ferramentasNavItems.map((item) => {
-                const active = pathname.startsWith("/dashboard/ferramentas");
+                const active = pathname.startsWith("/dashboard/ferramentas") && (
+                  item.tab === (searchParams.get("tab") || "calculadoras")
+                );
                 return (
                   <Link
                     key={item.href}
@@ -128,7 +131,7 @@ export default function DashboardLayout({
                       transition-all duration-200 group relative
                       ${
                         active
-                          ? "bg-amber-500/10 text-amber-900 border border-amber-500/30"
+                          ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }
                     `}
@@ -136,7 +139,7 @@ export default function DashboardLayout({
                   >
                     <item.icon
                       className={`w-4 h-4 flex-shrink-0 transition-colors ${
-                        active ? "text-amber-600" : "text-slate-400 group-hover:text-slate-700"
+                        active ? "text-amber-400" : "text-slate-400 group-hover:text-slate-700"
                       }`}
                     />
                     {!collapsed && <span className="truncate">{item.label}</span>}
@@ -240,5 +243,17 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500 font-medium">Carregando painel...</div>}>
+      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+    </Suspense>
   );
 }

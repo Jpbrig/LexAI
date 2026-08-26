@@ -124,53 +124,11 @@ function FerramentasContent() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold text-primary">Central de Ferramentas Jurídicas</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Cálculos jurídicos, consultas de dados, IA assistente e geradores de documentos em um só lugar.
-          </p>
-        </div>
-
-        {/* NAVEGAÇÃO POR ABAS */}
-        <div className="flex flex-wrap bg-slate-200/70 p-1.5 rounded-2xl w-fit gap-1">
-          <button
-            onClick={() => setActiveTab("calculadoras")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === "calculadoras" ? "bg-slate-900 text-white shadow-md" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Calculator className="w-4 h-4 text-amber-400" />
-            Cálculos Jurídicos ({calculosLista.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("consultas")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === "consultas" ? "bg-slate-900 text-white shadow-md" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Search className="w-4 h-4 text-amber-400" />
-            Consultas Legais ({consultasLista.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("outros")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === "outros" ? "bg-slate-900 text-white shadow-md" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            Recursos & IA ({outrosLista.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("procuracao")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTab === "procuracao" ? "bg-slate-900 text-white shadow-md" : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <FileCheck className="w-4 h-4 text-amber-400" />
-            Gerador de Procuração
-          </button>
-        </div>
+      <div>
+        <h1 className="font-display text-2xl font-bold text-primary">Central de Ferramentas Jurídicas</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Cálculos jurídicos, consultas de dados, IA assistente e geradores de documentos em um só lugar.
+        </p>
       </div>
 
       {/* ABA 1: CÁLCULOS JURÍDICOS */}
