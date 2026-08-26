@@ -53,12 +53,12 @@ export default function FerramentasPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in pb-16">
+    <div className="space-y-6 animate-fade-in">
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Ferramentas Práticas</h1>
-          <p className="text-slate-500 text-sm mt-1">Cálculo trabalhista automatizado e gerador de procurações jurídicas.</p>
+          <h1 className="font-display text-2xl font-bold text-primary">Ferramentas Práticas</h1>
+          <p className="text-muted-foreground text-sm mt-1">Cálculo trabalhista automatizado e gerador de procurações jurídicas.</p>
         </div>
 
         {/* Tabs switcher */}

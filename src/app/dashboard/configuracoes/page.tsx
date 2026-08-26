@@ -118,10 +118,10 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-12">
+    <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Configurações da Conta</h1>
-        <p className="text-slate-500 text-sm mt-1">Gerencie seu perfil profissional, foto, segurança e preferências de notificação.</p>
+        <h1 className="font-display text-2xl font-bold text-primary">Configurações da Conta</h1>
+        <p className="text-muted-foreground text-sm mt-1">Gerencie seu perfil profissional, foto, segurança e preferências de notificação.</p>
       </div>
 
       {/* Grid de Seções */}
