@@ -271,6 +271,33 @@ export default function ConfiguracoesPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Google Gemini — Petições IA */}
+          <div className="space-y-1.5 sm:col-span-2 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">🤖</span>
+              <label className="label font-bold text-sm text-amber-900 mb-0">Google Gemini API Key — Petições IA</label>
+            </div>
+            <input
+              type="password"
+              id="gemini-api-key"
+              placeholder="Cole sua chave do Google AI Studio (AIza...)..."
+              className="input text-xs font-mono"
+              defaultValue={typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : ""}
+              onChange={(e) => {
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("gemini_api_key", e.target.value);
+                }
+              }}
+            />
+            <p className="text-[11px] text-amber-700">
+              Obtenha gratuitamente em{" "}
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline font-bold">
+                aistudio.google.com/app/apikey
+              </a>
+              {" "}→ Habilita o Gerador de Petições IA com Google Gemini 1.5 Flash.
+            </p>
+          </div>
+
           <div className="space-y-1.5">
             <label className="label font-bold text-xs">Token / Chave API Infosimples</label>
             <input
@@ -311,6 +338,7 @@ export default function ConfiguracoesPage() {
             <p className="text-[11px] text-slate-400">Libera histórico veicular, gravames e restrições em tempo real.</p>
           </div>
         </div>
+
 
         <div className="flex justify-end pt-2">
           <button

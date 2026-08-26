@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Bot,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -29,6 +30,7 @@ const ferramentasNavItems = [
   { href: "/dashboard/ferramentas?tab=consultas", tab: "consultas", label: "Consultas Legais (13)", icon: Search },
   { href: "/dashboard/ferramentas?tab=outros", tab: "outros", label: "Recursos & IA (8)", icon: Sparkles },
   { href: "/dashboard/ferramentas?tab=procuracao", tab: "procuracao", label: "Gerador de Procuração", icon: FileCheck },
+  { href: "/dashboard/ferramentas?tab=peticoes", tab: "peticoes", label: "Petições IA (Gemini)", icon: Bot },
 ];
 
 const secondaryNavItems = [
