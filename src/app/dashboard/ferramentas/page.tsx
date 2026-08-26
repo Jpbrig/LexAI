@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Calculator,
   FileCheck,
@@ -24,12 +25,18 @@ import {
   DollarSign as MoneyIcon,
   Scale,
   CheckCircle2,
-  AlertCircle,
-  HelpCircle
 } from "lucide-react";
 
-export default function FerramentasPage() {
+function FerramentasContent() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | null;
   const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao">("calculadoras");
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
   const [selectedCalc, setSelectedCalc] = useState<string>("trabalhista");
   const [selectedConsulta, setSelectedConsulta] = useState<string>("buscador");
 
@@ -509,5 +516,13 @@ export default function FerramentasPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FerramentasPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium">Carregando ferramentas...</div>}>
+      <FerramentasContent />
+    </Suspense>
   );
 }
