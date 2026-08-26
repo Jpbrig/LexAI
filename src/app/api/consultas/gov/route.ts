@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// APIs públicas e gratuitas oficiais
+// Endpoints oficiais de APIs públicas e gratuitas
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
 const RECEITA_WS_BASE = "https://receitaws.com.br/v1";
 const BRASIL_API_BASE = "https://brasilapi.com.br/api";
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const termoNumerico = termoLimpo.replace(/[^0-9]/g, "");
 
     switch (tipo) {
-      // 1. Consulta de CEP / Endereço Completo (ViaCEP / Correios API Grátis)
+      // 1. Consulta Real de CEP (ViaCEP / Correios API Pública Grátis)
       case "cep": {
         if (termoNumerico.length !== 8) {
           return NextResponse.json(
@@ -40,11 +40,11 @@ export async function POST(req: NextRequest) {
               return NextResponse.json({
                 sucesso: true,
                 tipo,
-                fonte: "ViaCEP / Correios (Base Oficial de Logradouros)",
+                fonte: "ViaCEP / Correios (Base Oficial em Tempo Real)",
                 dados: {
                   cep: dataCep.cep,
-                  logradouro: dataCep.logradouro,
-                  bairro: dataCep.bairro,
+                  logradouro: dataCep.logradouro || "Não informado",
+                  bairro: dataCep.bairro || "Não informado",
                   cidade: dataCep.localidade,
                   uf: dataCep.uf,
                   ibge: dataCep.ibge,
@@ -57,12 +57,12 @@ export async function POST(req: NextRequest) {
         } catch {}
 
         return NextResponse.json(
-          { error: "CEP não encontrado na base de logradouros dos Correios." },
+          { error: "CEP não encontrado na base pública dos Correios." },
           { status: 404 }
         );
       }
 
-      // 2. Buscador Processual (DataJud / CNJ)
+      // 2. Buscador Processual (DataJud / CNJ API Pública)
       case "buscador": {
         try {
           const resDataJud = await fetch(`${DATAJUD_BASE}/api_publica_tjsp/_search`, {
@@ -93,31 +93,84 @@ export async function POST(req: NextRequest) {
                 orgaoJulgador: h._source?.orgaoJulgador?.nome || "Vara Cível",
                 dataAtualizacao: h._source?.dataHoraUltimaAtualizacao,
               }));
-              return NextResponse.json({ sucesso: true, tipo, dados: resultados, fonte: "DataJud / CNJ API Oficial" });
+              return NextResponse.json({ sucesso: true, tipo, dados: resultados, fonte: "DataJud / CNJ API Oficial em Tempo Real" });
             }
           }
         } catch {}
 
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "DataJud / CNJ API Oficial",
-          dados: [
-            {
-              numeroCnj: termoNumerico.length === 20 ? termoNumerico : "1002345-12.2024.8.26.0100",
-              tribunal: "TJSP - Tribunal de Justiça de São Paulo",
-              classe: "Procedimento Comum Cível",
-              orgaoJulgador: "2ª Vara Cível da Capital",
-              poloAtivo: termoLimpo.length > 5 ? termoLimpo : "Parte Requerente",
-              poloPassivo: "Empresa Requerida S/A",
-              dataDistribuicao: "2024-03-15",
-              status: "ATIVO",
-            },
-          ],
-        });
+        return NextResponse.json(
+          { error: `Nenhum processo encontrado no DataJud/CNJ para o termo '${termoLimpo}'.` },
+          { status: 404 }
+        );
       }
 
-      // 3. Situação Cadastral de CPF (Receita Federal / BrasilAPI)
+      // 3. Sociedades e Empresas / Grupo Econômico (ReceitaWS / BrasilAPI CNPJ Real)
+      case "empresas":
+      case "grupo_cnpj": {
+        if (termoNumerico.length !== 14) {
+          return NextResponse.json(
+            { error: "Insira um CNPJ válido com 14 dígitos (ex: 00.000.000/0001-91)." },
+            { status: 400 }
+          );
+        }
+
+        try {
+          // Tenta BrasilAPI CNPJ primeiro
+          const resBrasilCnpj = await fetch(`${BRASIL_API_BASE}/cnpj/v1/${termoNumerico}`);
+          if (resBrasilCnpj.ok) {
+            const cnpjData = await resBrasilCnpj.json();
+            return NextResponse.json({
+              sucesso: true,
+              tipo,
+              fonte: "Receita Federal do Brasil (BrasilAPI / CNPJ Real)",
+              dados: {
+                cnpj: cnpjData.cnpj,
+                razaoSocial: cnpjData.razao_social,
+                nomeFantasia: cnpjData.nome_fantasia || "Não informado",
+                situacaoCadastral: cnpjData.descricao_situacao_cadastral,
+                dataInicioAtividade: cnpjData.data_inicio_atividade,
+                capitalSocial: `R$ ${parseFloat(cnpjData.capital_social || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                quadroSocietarioQSA: cnpjData.qsa?.map((s: any) => ({
+                  nomeSocio: s.nome_socio_raz_social || s.nome,
+                  qualificacao: s.qualificacao_socio || s.qual,
+                })) || [],
+                cnaePrincipal: cnpjData.cnae_fiscal_descricao,
+                endereco: `${cnpjData.logradouro}, ${cnpjData.numero} - ${cnpjData.bairro}, ${cnpjData.municipio}/${cnpjData.uf} (CEP: ${cnpjData.cep})`,
+              },
+            });
+          }
+
+          // Fallback para ReceitaWS
+          const resReceita = await fetch(`${RECEITA_WS_BASE}/cnpj/${termoNumerico}`);
+          if (resReceita.ok) {
+            const cnpjData = await resReceita.json();
+            if (cnpjData.status !== "ERROR") {
+              return NextResponse.json({
+                sucesso: true,
+                tipo,
+                fonte: "Receita Federal do Brasil (ReceitaWS / CNPJ Real)",
+                dados: {
+                  cnpj: cnpjData.cnpj,
+                  razaoSocial: cnpjData.nome,
+                  nomeFantasia: cnpjData.fantasia || "Não informado",
+                  situacaoCadastral: cnpjData.situacao,
+                  capitalSocial: cnpjData.capital_social,
+                  quadroSocietarioQSA: cnpjData.qsa,
+                  cnaePrincipal: cnpjData.atividade_principal?.[0]?.text,
+                  endereco: `${cnpjData.logradouro}, ${cnpjData.numero} - ${cnpjData.bairro}, ${cnpjData.municipio}/${cnpjData.uf}`,
+                },
+              });
+            }
+          }
+        } catch {}
+
+        return NextResponse.json(
+          { error: "CNPJ não encontrado na base pública da Receita Federal." },
+          { status: 404 }
+        );
+      }
+
+      // 4. Situação Cadastral de CPF (BrasilAPI CPF Público)
       case "cpf_status": {
         if (termoNumerico.length !== 11) {
           return NextResponse.json(
@@ -126,210 +179,70 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        let cpfData = null;
         try {
           const resCpf = await fetch(`${BRASIL_API_BASE}/cpf/v1/${termoNumerico}`);
           if (resCpf.ok) {
-            cpfData = await resCpf.json();
+            const cpfData = await resCpf.json();
+            return NextResponse.json({
+              sucesso: true,
+              tipo,
+              fonte: "Receita Federal do Brasil (BrasilAPI / RFB Real)",
+              dados: {
+                cpf: cpfData.cpf || termoNumerico,
+                nomeTitular: cpfData.nome,
+                situacaoCadastral: cpfData.status || "REGULAR",
+                dataNascimento: cpfData.data_nascimento || "Não informada",
+              },
+            });
           }
         } catch {}
 
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "Receita Federal do Brasil (RFB)",
-          dados: {
-            cpfConsultado: termoNumerico,
-            nomeTitular: cpfData?.nome || "CONCORDANTE COM REGISTRO RFB",
-            situacaoCadastral: cpfData?.status ? cpfData.status : "REGULAR PERANTE A RECEITA FEDERAL",
-            dataNascimento: cpfData?.data_nascimento || "NÃO INFORMADA (PROTEÇÃO LGPD)",
-            comprovanteEmissao: `RFB-${Date.now()}-OK`,
-            obitoRegistrado: "NÃO",
-          },
-        });
+        return NextResponse.json(
+          { error: `O CPF ${termoLimpo} não foi retornado ou exige chave privada autorizada Serpro/RFB.` },
+          { status: 404 }
+        );
       }
 
-      // 4. Sociedades e Empresas / Grupo Econômico (ReceitaWS / BrasilAPI CNPJ)
-      case "empresas":
-      case "grupo_cnpj": {
-        if (termoNumerico.length !== 14) {
-          return NextResponse.json(
-            { error: "Insira um CNPJ válido com 14 dígitos." },
-            { status: 400 }
-          );
-        }
-
-        let cnpjData = null;
-        try {
-          const resCnpj = await fetch(`${RECEITA_WS_BASE}/cnpj/${termoNumerico}`);
-          if (resCnpj.ok) {
-            cnpjData = await resCnpj.json();
-          } else {
-            const resBrasilCnpj = await fetch(`${BRASIL_API_BASE}/cnpj/v1/${termoNumerico}`);
-            if (resBrasilCnpj.ok) {
-              cnpjData = await resBrasilCnpj.json();
-            }
-          }
-        } catch {}
-
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "Receita Federal do Brasil - Cadastro Nacional da Pessoa Jurídica (CNPJ)",
-          dados: {
-            cnpjConsultado: cnpjData?.cnpj || termoNumerico,
-            razaoSocial: cnpjData?.nome || cnpjData?.razao_social || "EMPRESA REGISTRADA LTDA",
-            nomeFantasia: cnpjData?.fantasia || cnpjData?.nome_fantasia || "MARCA COMERCIAL",
-            situacaoCadastral: cnpjData?.situacao || cnpjData?.descricao_situacao_cadastral || "ATIVA",
-            capitalSocial: cnpjData?.capital_social || "R$ 100.000,00",
-            quadroSocietarioQSA: cnpjData?.qsa || [
-              { nome: "SÓCIO ADMINISTRADOR 1", qualificacao: "49-Sócio-Administrador" },
-            ],
-            atividadePrincipal: cnpjData?.atividade_principal?.[0]?.text || cnpjData?.cnae_fiscal_descricao || "Serviços Jurídicos e de Consultoria",
-          },
-        });
-      }
-
-      // 5. Veículo / Renavam / Rastreamento (DENATRAN / SINESP Gov)
+      // 5. Veículo / Renavam / Rastreamento
       case "veiculo":
       case "rastreio_veiculo": {
         const ehPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i.test(termoLimpo) || (termoLimpo.length === 7 && /[A-Z]/i.test(termoLimpo));
         const ehRenavam = termoNumerico.length === 9 || (termoNumerico.length === 11 && !termoLimpo.includes(".") && !termoLimpo.includes("-"));
-        const ehCpfCnpj = termoNumerico.length === 11 || termoNumerico.length === 14;
 
         if (tipo === "veiculo" && !ehPlaca && !ehRenavam) {
           return NextResponse.json(
-            { error: "Erro de entrada: A ferramenta 'Dados do Veículo' exige uma Placa válida (ex: ABC1D23) ou número do RENAVAM (9 a 11 dígitos). Para buscar veículos por CPF/CNPJ do dono, utilize a ferramenta 'Rastreamento de Veículo'." },
+            { error: "Insira uma Placa válida (ex: ABC1D23) ou número do RENAVAM (9 a 11 dígitos)." },
             { status: 400 }
           );
         }
 
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "SENATRAN / SINESP - Secretaria Nacional de Trânsito",
-          dados: {
-            identificadorConsultado: termoLimpo.toUpperCase(),
-            tipoEntrada: ehPlaca ? "PLACA DO VEÍCULO" : ehRenavam ? "RENAVAM" : "CPF/CNPJ DO PROPRIETÁRIO",
-            placaVeiculo: ehPlaca ? termoLimpo.toUpperCase() : "ABC-1D23",
-            renavam: ehRenavam ? termoNumerico : "00987654321",
-            chassi: "9BWZZZ377VT" + Math.floor(100000 + Math.random() * 900000),
-            marcaModelo: "VOLKSWAGEN / GOL 1.6",
-            anoFabricacaoModelo: "2021/2022",
-            cor: "BRANCA",
-            municipioUF: "SÃO PAULO / SP",
-            situacaoVeiculo: "SEM RESTRIÇÃO ROUBO/FURTO",
-            gravame: "ALIENAÇÃO FIDUCIÁRIA (FINANCEIRA)",
-            licenciamentoExercício: "2024 QUITADO",
-          },
-        });
+        // Tentar consultar placa via BrasilAPI fipe se aplicável
+        return NextResponse.json(
+          { error: `A consulta pública de Veículo/RENAVAM para '${termoLimpo}' exige credencial paga do SENATRAN/SINESP ou API comercial (DirectData/Infosimples).` },
+          { status: 404 }
+        );
       }
 
-      // 6. CNH (DETRAN / SENATRAN)
-      case "cnh": {
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "SENATRAN / DETRAN - Registro Nacional de Carteira de Habilitação",
-          dados: {
-            documentoConsultado: termoLimpo,
-            numeroRegistroCNH: `CNH-${Math.floor(100000000 + Math.random() * 900000000)}`,
-            categoria: "AB",
-            statusHabilitacao: "REGULAR / VÁLIDA",
-            pontuacaoAtual: "0 PONTOS (SEM INFRAÇÕES)",
-            bloqueioJudicial: "NADA CONSTA",
-          },
-        });
-      }
-
-      // 7. Marcas e Patentes (INPI)
-      case "marcas": {
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "INPI - Instituto Nacional da Propriedade Industrial",
-          dados: {
-            termoOuMarcaConsultada: termoLimpo,
-            processoInpi: `INPI-${Math.floor(100000000 + Math.random() * 900000000)}`,
-            titularMarca: "REQUERENTE DA MARCA",
-            classeNice: "NCL(11) 45 - Serviços Jurídicos e de Segurança",
-            situacao: "REGISTRO DE MARCA EM VIGOR",
-            dataDeposito: "2022-06-10",
-          },
-        });
-      }
-
-      // 8. Restrição de Crédito & Protestos (IEPTB Cartórios)
-      case "credito": {
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "IEPTB - Instituto de Estudos de Protesto de Títulos do Brasil",
-          dados: {
-            documentoConsultado: termoLimpo,
-            constamProtestos: "NÃO CONSTAM PROTESTOS NOS CARTÓRIOS",
-            cartoriosConsultados: "10 Cartórios da Capital e Região Metropolitana",
-            certidaoNegativaNumero: `CERT-${Date.now()}`,
-            emissao: new Date().toLocaleDateString("pt-BR"),
-          },
-        });
-      }
-
-      // 9. Localização de Devedores (Serpro Dívida Ativa PGFN / CADIN Gov.br / Bureau)
+      // 6. Localização de Devedores (Serpro / CADIN / PGFN)
       case "localizacao": {
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "Serpro API Dívida Ativa PGFN + Novo CADIN (Gov.br) & Junta Comercial",
-          dados: {
-            devedorConsultado: termoLimpo,
-            situacaoPGFN: "DÍVIDA ATIVA DA UNIÃO (INSCRITO)",
-            dividaAtivaSerpro: {
-              inscricaoPGFN: `PGFN-${Math.floor(10000000 + Math.random() * 90000000)}`,
-              valorInscrito: "R$ 48.520,00",
-              orgaoOrigem: "Receita Federal / Procuradoria-Geral da Fazenda Nacional",
-              naturezaDivida: "Tributária (FGTS / IRPJ)",
-              statusInscricao: "EM COBRANÇA JUDICIAL",
-            },
-            novoCADINGov: {
-              registroCadin: "CONSTA REGISTRO NO CADIN GOVERNO FEDERAL",
-              entidadeCredora: "União Federal / Caixa Econômica Federal",
-              dataInclusao: "2023-11-10",
-            },
-            enderecosLocatariosEncontrados: [
-              { logradouro: "Av. Paulista, 1500 - Bela Vista", cidadeUF: "São Paulo/SP", cep: "01310-200", tipo: "Fiscal / RFB" },
-              { logradouro: "Rua das Flores, 45 - Centro", cidadeUF: "Campinas/SP", cep: "13010-000", tipo: "Comercial / QSA" },
-            ],
-            telefonesVencidosOuAtivos: ["(11) 98765-4321", "(11) 3214-5678"],
-          },
-        });
+        return NextResponse.json(
+          { error: `A consulta da Dívida Ativa da União (Serpro/PGFN) e Novo CADIN para '${termoLimpo}' exige convênio oficial ou chave comercial paga (Serpro API Center / DirectData).` },
+          { status: 404 }
+        );
       }
 
-      // 10. Relacionamentos e Dados Profissionais
-      case "relacionamentos":
-      case "profissionais":
+      // Default para demais ferramentas comerciais
       default: {
-        return NextResponse.json({
-          sucesso: true,
-          tipo,
-          fonte: "Base de Dados Governamentais & Juntas Comerciais",
-          dados: {
-            investigadoConsultado: termoLimpo,
-            enderecosCadastrados: [
-              { logradouro: "Av. Paulista, 1500 - Bela Vista", cidadeUF: "São Paulo/SP", cep: "01310-200" },
-              { logradouro: "Rua das Flores, 45 - Centro", cidadeUF: "Campinas/SP", cep: "13010-000" },
-            ],
-            telefonesContato: ["(11) 98765-4321", "(11) 3214-5678"],
-            vinculosOuSocietarios: ["SÓCIO ADMINISTRADOR EM 1 EMPRESA", "CÔNJUGE VINCULADO VIA RFB"],
-            registroProfissional: "REGISTRO ATIVO OAB/SP",
-          },
-        });
+        return NextResponse.json(
+          { error: `A consulta '${tipo}' para o termo '${termoLimpo}' exige integração com API comercial contratada (DirectData / Infosimples / Serpro).` },
+          { status: 404 }
+        );
       }
     }
   } catch (error: any) {
-    console.error("Erro na API de Consultas Governamentais:", error);
+    console.error("Erro na API de Consultas:", error);
     return NextResponse.json(
-      { error: "Erro ao conectar aos servidores oficiais do governo." },
+      { error: "Erro interno ao conectar aos servidores de consulta." },
       { status: 500 }
     );
   }
