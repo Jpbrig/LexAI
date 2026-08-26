@@ -62,6 +62,63 @@ function FerramentasContent() {
   const [meses, setMeses] = useState<string>("");
   const [consultaTermo, setConsultaTermo] = useState<string>("");
 
+  // Procuração IA state
+  const [tipoProcuracao, setTipoProcuracao] = useState("ad_judicia");
+  const [outorganteEstadoCivil, setOutorganteEstadoCivil] = useState("solteiro(a)");
+  const [outorganteProfissao, setOutorganteProfissao] = useState("");
+  const [outorganteCidade, setOutorganteCidade] = useState("");
+  const [procObjeto, setProcObjeto] = useState("");
+  const [textoProcuracao, setTextoProcuracao] = useState("");
+  const [loadingProcuracao, setLoadingProcuracao] = useState(false);
+  const [erroProcuracao, setErroProcuracao] = useState("");
+  const [procUploadFileName, setProcUploadFileName] = useState("");
+
+  async function gerarProcuracaoIA() {
+    setLoadingProcuracao(true);
+    setErroProcuracao("");
+    setTextoProcuracao("");
+    const geminiKey = typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : "";
+    try {
+      const res = await fetch("/api/peticoes/gerar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipoPeca: "procuracao",
+          requerente: outorganteNome,
+          requerido: outorgadoAdvogado,
+          juizo: outorganteCidade,
+          numeroProcesso: "",
+          fatos: `Outorgante: ${outorganteNome}, ${outorganteEstadoCivil}, ${outorganteProfissao || "brasileiro(a)"}, CPF ${outorganteCpf}, RG ${outorganteRg}, residente em ${outorganteEndereco}${outorganteCidade ? ", " + outorganteCidade : ""}. Outorgado: ${outorgadoAdvogado}, OAB ${outorgadoOab}. Tipo: ${tipoProcuracao}. Objeto: ${procObjeto || "poderes gerais para o foro."}`,
+          pedidos: procObjeto,
+          valorCausa: "",
+          geminiKey,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.sucesso) {
+        setTextoProcuracao(data.texto);
+      } else {
+        setErroProcuracao(data.error || "Erro ao gerar a procuração.");
+      }
+    } catch {
+      setErroProcuracao("Erro de conexão com o servidor.");
+    } finally {
+      setLoadingProcuracao(false);
+    }
+  }
+
+  function handleProcUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProcUploadFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      setProcObjeto((prev) => (prev ? prev + "\n\n[Modelo base]:\n" + content : content));
+    };
+    reader.readAsText(file);
+  }
+
   // Governamental API state
   const [loadingGov, setLoadingGov] = useState<boolean>(false);
   const [resultadoGov, setResultadoGov] = useState<any>(null);
@@ -931,78 +988,232 @@ function FerramentasContent() {
 
       {/* ABA 4: GERADOR DE PROCURAÇÃO */}
       {activeTab === "procuracao" && (
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="p-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl flex items-center gap-4 shadow-lg">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
+              <FileCheck className="w-7 h-7 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="font-bold text-lg">Gerador de Procuração IA</h2>
+              <p className="text-slate-300 text-sm">Powered by Google Gemini — Procuração gerada por IA com qualificação completa das partes.</p>
+            </div>
+            <a href="/dashboard/configuracoes" className="ml-auto flex-shrink-0 text-xs bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-xl px-3 py-2 hover:bg-amber-500/30 transition-colors">
+              ⚙️ Configurar Chave Gemini
+            </a>
+          </div>
+
+          {/* Tipo de Procuração */}
+          <div className="card space-y-4">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <FileText className="w-5 h-5 text-amber-500" />
+              <h2 className="font-bold text-slate-900 text-base">1. Tipo de Procuração</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { id: "ad_judicia", label: "Ad Judicia et Extra", desc: "Poderes gerais para o foro" },
+                { id: "especial", label: "Procuração Especial", desc: "Para ato específico" },
+                { id: "administrativa", label: "Administrativa", desc: "Repartições e órgãos públicos" },
+                { id: "substabelecimento", label: "Substabelecimento", desc: "Transferência de poderes" },
+              ].map((tipo) => (
+                <button
+                  key={tipo.id}
+                  onClick={() => setTipoProcuracao(tipo.id)}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    tipoProcuracao === tipo.id
+                      ? "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <p className={`text-xs font-bold ${tipoProcuracao === tipo.id ? "text-amber-700" : "text-slate-800"}`}>{tipo.label}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{tipo.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Dados das Partes */}
           <div className="card space-y-4">
             <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
               <User className="w-5 h-5 text-amber-500" />
-              <h2 className="font-bold text-slate-900 text-base">Dados das Partes</h2>
+              <h2 className="font-bold text-slate-900 text-base">2. Dados das Partes</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="label">Nome do Cliente (Outorgante)</label>
-                <input type="text" className="input" value={outorganteNome} onChange={(e) => setOutorganteNome(e.target.value)} />
+                <label className="label">Nome do Outorgante (Cliente)</label>
+                <input type="text" className="input" placeholder="Nome completo..." value={outorganteNome} onChange={(e) => setOutorganteNome(e.target.value)} />
               </div>
               <div>
-                <label className="label">CPF do Cliente</label>
-                <input type="text" className="input" value={outorganteCpf} onChange={(e) => setOutorganteCpf(e.target.value)} />
+                <label className="label">CPF do Outorgante</label>
+                <input type="text" className="input" placeholder="000.000.000-00" value={outorganteCpf} onChange={(e) => setOutorganteCpf(e.target.value)} />
               </div>
               <div>
-                <label className="label">RG do Cliente</label>
-                <input type="text" className="input" value={outorganteRg} onChange={(e) => setOutorganteRg(e.target.value)} />
+                <label className="label">RG / Documento de Identidade</label>
+                <input type="text" className="input" placeholder="00.000.000-0 SSP/SP" value={outorganteRg} onChange={(e) => setOutorganteRg(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Estado Civil</label>
+                <select className="input" value={outorganteEstadoCivil} onChange={(e) => setOutorganteEstadoCivil(e.target.value)}>
+                  <option value="solteiro(a)">Solteiro(a)</option>
+                  <option value="casado(a)">Casado(a)</option>
+                  <option value="divorciado(a)">Divorciado(a)</option>
+                  <option value="viúvo(a)">Viúvo(a)</option>
+                  <option value="separado(a) judicialmente">Separado(a) Judicialmente</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Profissão</label>
+                <input type="text" className="input" placeholder="Ex: Empresário, Advogado..." value={outorganteProfissao} onChange={(e) => setOutorganteProfissao(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Cidade / UF de Residência</label>
+                <input type="text" className="input" placeholder="Ex: São Paulo/SP" value={outorganteCidade} onChange={(e) => setOutorganteCidade(e.target.value)} />
               </div>
               <div className="sm:col-span-2">
                 <label className="label">Endereço Completo</label>
-                <input type="text" className="input" value={outorganteEndereco} onChange={(e) => setOutorganteEndereco(e.target.value)} />
+                <input type="text" className="input" placeholder="Rua, número, bairro, CEP..." value={outorganteEndereco} onChange={(e) => setOutorganteEndereco(e.target.value)} />
               </div>
               <div>
-                <label className="label">Advogado (Outorgado)</label>
-                <input type="text" className="input" value={outorgadoAdvogado} onChange={(e) => setOutorgadoAdvogado(e.target.value)} />
-              </div>
-              <div>
-                <label className="label">OAB do Advogado</label>
-                <input type="text" className="input" value={outorgadoOab} onChange={(e) => setOutorgadoOab(e.target.value)} />
+                <label className="label">Arquivo Modelo Base (opcional)</label>
+                <label className={`flex items-center gap-2 p-2.5 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${procUploadFileName ? "border-emerald-400 bg-emerald-50" : "border-slate-200 hover:border-amber-300 hover:bg-amber-50"}`}>
+                  <FileCheck className={`w-4 h-4 flex-shrink-0 ${procUploadFileName ? "text-emerald-500" : "text-slate-400"}`} />
+                  <span className={`text-xs font-medium truncate ${procUploadFileName ? "text-emerald-700" : "text-slate-500"}`}>
+                    {procUploadFileName || "Enviar modelo .txt base"}
+                  </span>
+                  <input type="file" accept=".txt,.docx" className="hidden" onChange={handleProcUpload} />
+                </label>
               </div>
             </div>
-          </div>
 
-          {/* Minuta Gerada */}
-          <div className="card space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-900 text-base">Visualização do Documento</span>
-              <button
-                onClick={() => window.print()}
-                className="btn-primary text-sm"
-              >
-                <Printer className="w-4 h-4 text-amber-400" />
-                Imprimir / Salvar PDF
-              </button>
-            </div>
-            <div className="bg-white rounded-2xl p-8 border border-slate-300 shadow-inner space-y-6 text-slate-900 font-serif leading-relaxed text-justify">
-              <h2 className="font-bold text-center text-xl uppercase tracking-wider text-slate-900 mb-8 border-b-2 border-slate-900 pb-2">
-                PROCURAÇÃO AD JUDICIA ET EXTRA JUDICIA
-              </h2>
-              <p className="text-sm">
-                <strong>OUTORGANTE:</strong> <strong>{outorganteNome.toUpperCase()}</strong>, brasileiro(a), portador(a) da Cédula de Identidade RG nº {outorganteRg} e inscrito(a) no CPF/MF sob o nº {outorganteCpf}, residente e domiciliado(a) na {outorganteEndereco}.
-              </p>
-              <p className="text-sm">
-                <strong>OUTORGADO:</strong> <strong>{outorgadoAdvogado.toUpperCase()}</strong>, advogado(a) inscrito(a) na Ordem dos Advogados do Brasil sob o nº {outorgadoOab}, com escritório profissional de advocacia.
-              </p>
-              <p className="text-sm">
-                <strong>PODERES:</strong> Pelo presente instrumento particular de procuração, o(a) OUTORGANTE nomeia e constitui o(a) OUTORGADO(A) como seu(sua) procurador(a), concedendo-lhe amplos poderes para o foro em geral, constantes da cláusula <em>"ad judicia et extra judicia"</em>, em qualquer Juízo, Tribunal ou Repartição Pública.
-              </p>
-              <p className="text-sm">
-                <strong>PODERES ESPECIAIS:</strong> Incluindo poderes para confessar, reconhecer a procedência do pedido, transigir, desistir, renunciar ao direito sobre o qual se funda a ação, assinar termo, firmar compromissos, receber e dar quitação, requerer execução e praticar todos os atos necessários ao bom e fiel cumprimento deste mandato.
-              </p>
-              <div className="pt-16 text-center text-sm space-y-12">
-                <p>São Paulo/SP, {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.</p>
-                <div className="inline-block border-t border-slate-900 px-12 pt-2">
-                  <p className="font-bold">{outorganteNome.toUpperCase()}</p>
-                  <p className="text-xs text-slate-500">Outorgante</p>
+            {/* Outorgado */}
+            <div className="pt-2 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Advogado Outorgado</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="label">Nome do Advogado</label>
+                  <input type="text" className="input" placeholder="Dr(a). Nome Completo..." value={outorgadoAdvogado} onChange={(e) => setOutorgadoAdvogado(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Número OAB</label>
+                  <input type="text" className="input" placeholder="SP 123.456" value={outorgadoOab} onChange={(e) => setOutorgadoOab(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Objeto / Finalidade da Procuração</label>
+                  <input type="text" className="input" placeholder="Ex: Representar em ação de cobrança..." value={procObjeto} onChange={(e) => setProcObjeto(e.target.value)} />
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Botão Gerar */}
+          <button
+            onClick={gerarProcuracaoIA}
+            disabled={loadingProcuracao || !outorganteNome || !outorgadoAdvogado}
+            className="btn-primary w-full justify-center py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingProcuracao ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Gerando procuração com Gemini IA...
+              </>
+            ) : (
+              <>
+                <Bot className="w-5 h-5 text-amber-400" />
+                3. Gerar Procuração com IA
+              </>
+            )}
+          </button>
+
+          {/* Erro */}
+          {erroProcuracao && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-800">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm">Erro ao gerar procuração</p>
+                <p className="text-sm mt-0.5">{erroProcuracao}</p>
+                {erroProcuracao.includes("Chave") && (
+                  <a href="/dashboard/configuracoes" className="text-xs underline font-bold mt-1 inline-block">
+                    → Ir para Configurações e adicionar chave Gemini
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Editor / Preview */}
+          {textoProcuracao ? (
+            <div className="card space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  <span className="font-bold text-slate-900 text-base">4. Editor da Procuração — Revise e Edite</span>
+                  <span className="badge badge-success text-[10px]">Gerado por IA</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => navigator.clipboard.writeText(textoProcuracao)} className="btn-outline text-xs py-2 px-4">
+                    📋 Copiar Texto
+                  </button>
+                  <button onClick={() => window.print()} className="btn-primary text-xs py-2 px-4">
+                    <Printer className="w-4 h-4 text-amber-400" />
+                    Imprimir / PDF
+                  </button>
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
+                <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span><strong>Atenção:</strong> Revise os dados antes de imprimir. A procuração precisa ser assinada pelo outorgante e reconhecida em cartório quando exigido.</span>
+              </div>
+              <textarea
+                rows={30}
+                className="w-full p-6 rounded-xl border border-slate-200 bg-white text-sm leading-relaxed text-slate-900 resize-y outline-none focus:ring-2 focus:ring-slate-300"
+                value={textoProcuracao}
+                onChange={(e) => setTextoProcuracao(e.target.value)}
+                style={{ fontFamily: "'Georgia', serif", lineHeight: "1.8" }}
+              />
+            </div>
+          ) : (
+            /* Preview estático enquanto não gera com IA */
+            outorganteNome && outorgadoAdvogado ? (
+              <div className="card space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 text-base">Pré-visualização (Modelo Padrão)</span>
+                  <button onClick={() => window.print()} className="btn-primary text-sm">
+                    <Printer className="w-4 h-4 text-amber-400" />
+                    Imprimir / Salvar PDF
+                  </button>
+                </div>
+                <div className="bg-white rounded-2xl p-8 border border-slate-300 shadow-inner space-y-6 text-slate-900 font-serif leading-relaxed text-justify">
+                  <h2 className="font-bold text-center text-xl uppercase tracking-wider text-slate-900 mb-8 border-b-2 border-slate-900 pb-2">
+                    PROCURAÇÃO AD JUDICIA ET EXTRA JUDICIA
+                  </h2>
+                  <p className="text-sm">
+                    <strong>OUTORGANTE:</strong> <strong>{outorganteNome.toUpperCase()}</strong>, {outorganteEstadoCivil}, {outorganteProfissao || "brasileiro(a)"}, portador(a) da Cédula de Identidade RG nº {outorganteRg} e inscrito(a) no CPF/MF sob o nº {outorganteCpf}, residente e domiciliado(a) na {outorganteEndereco}{outorganteCidade ? `, ${outorganteCidade}` : ""}.
+                  </p>
+                  <p className="text-sm">
+                    <strong>OUTORGADO:</strong> <strong>{outorgadoAdvogado.toUpperCase()}</strong>, advogado(a) inscrito(a) na Ordem dos Advogados do Brasil sob o nº {outorgadoOab}, com escritório profissional de advocacia.
+                  </p>
+                  <p className="text-sm">
+                    <strong>PODERES:</strong> Pelo presente instrumento particular de procuração, o(a) OUTORGANTE nomeia e constitui o(a) OUTORGADO(A) como seu(sua) procurador(a), concedendo-lhe amplos poderes para o foro em geral, constantes da cláusula <em>&quot;ad judicia et extra judicia&quot;</em>, em qualquer Juízo, Tribunal ou Repartição Pública.
+                  </p>
+                  <p className="text-sm">
+                    <strong>PODERES ESPECIAIS:</strong> Incluindo poderes para confessar, reconhecer a procedência do pedido, transigir, desistir, renunciar ao direito sobre o qual se funda a ação, assinar termo, firmar compromissos, receber e dar quitação, requerer execução e praticar todos os atos necessários ao bom e fiel cumprimento deste mandato.
+                  </p>
+                  {procObjeto && (
+                    <p className="text-sm">
+                      <strong>OBJETO:</strong> {procObjeto}.
+                    </p>
+                  )}
+                  <div className="pt-16 text-center text-sm space-y-12">
+                    <p>{outorganteCidade || "São Paulo/SP"}, {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.</p>
+                    <div className="inline-block border-t border-slate-900 px-12 pt-2">
+                      <p className="font-bold">{outorganteNome.toUpperCase()}</p>
+                      <p className="text-xs text-slate-500">Outorgante</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null
+          )}
         </div>
       )}
       {/* ABA 5: PETIÇÕES IA */}

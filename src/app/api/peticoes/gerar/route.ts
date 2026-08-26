@@ -33,6 +33,18 @@ Inclua pedido de efeito suspensivo ou antecipação da tutela recursal.`,
 Redija um HABEAS CORPUS completo conforme o art. 647 e ss. do CPP.
 Inclua qualificação do Paciente, Autoridade Coatora, fundamentos e pedido de liminar.`,
 
+  procuracao: `Você é um advogado especialista redator de documentos jurídicos brasileiros.
+Redigir uma PROCURAÇÃO AD JUDICIA ET EXTRA JUDICIA completa, formal e com validade jurídica.
+Estrutura obrigatória:
+1. Título: PROCURAÇÃO AD JUDICIA ET EXTRA JUDICIA (centralizado, maiúsculas)
+2. OUTORGANTE: qualificação completa (nome, estado civil, documento, CPF, endereço)
+3. OUTORGADO: qualificação completa do advogado, com número OAB e estado
+4. DOS PODERES: cláusula ad judicia — poderes gerais para o foro
+5. PODERES ESPECIAIS: confessar, transigir, desistir, receber, dar quitação, substabelecer
+6. Poderes específicos conforme o objeto informado
+7. Local, data e assinatura do outorgante
+Use linguagem formal, solene e jurídica conforme o Código Civil (Art. 653 e ss.) e o Estatuto da OAB.`,
+
   embargos: `Você é um advogado especialista redator de peças processuais brasileiras.
 Redija EMBARGOS DE DECLARAÇÃO conforme o CPC (Art. 1.022 e ss.).
 Indique claramente omissão, contradição ou obscuridade.`,
@@ -112,3 +124,5 @@ Gere o texto completo da peça processual, em português do Brasil, com linguage
     return NextResponse.json({ error: "Erro interno ao processar a solicitação." }, { status: 500 });
   }
 }
+
+// Re-export named for procuracao type already handled via 'procuracao' tipoPeca key
