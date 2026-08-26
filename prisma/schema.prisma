@@ -48,6 +48,8 @@ model User {
   stripeCustomerId String? @unique
   stripeSubscriptionId String? @unique
   trialEndsAt   DateTime?
+  loginAttempts Int       @default(0)  // Contador de tentativas falhas
+  lockedUntil   DateTime?              // Conta bloqueada até esta data
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
