@@ -129,7 +129,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Bar Header */}
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-6 h-16 flex items-center justify-between flex-shrink-0 z-20">
           <div className="flex items-center gap-2">
@@ -151,8 +151,10 @@ export default function DashboardLayout({
         </header>
 
         {/* Content Viewport */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8 w-full">
-          {children}
+        <main className="flex-1 overflow-y-auto p-6 md:p-8 w-full min-w-0">
+          <div className="w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

@@ -11,6 +11,19 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: 'Inter', system-ui, sans-serif;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+  width: 100%;
 }
 
 .btn-primary {
@@ -65,6 +78,9 @@ body {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.07);
   border: 1px solid #E2E8F0;
   padding: 1.5rem;
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
 }
 .card-premium {
   background-color: #ffffff;
