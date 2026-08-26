@@ -126,6 +126,7 @@ function FerramentasContent() {
   ];
 
   const consultasLista = [
+    { id: "cep", name: "Busca CEP & Endereço Completo", icon: Building2, desc: "Logradouro, bairro, município e UF oficiais", inputType: "CEP (8 dígitos)", placeholder: "Digite o CEP (ex: 01310-200 ou 01310200)..." },
     { id: "buscador", name: "Buscador Processual", icon: Search, desc: "Consulta por Nome, CPF, CNPJ ou OAB em todos os tribunais", inputType: "CNJ / CPF / Nome / OAB", placeholder: "Ex: 1002345-12.2024.8.26.0100 ou CPF/Nome" },
     { id: "cpf_status", name: "Situação Cadastral de CPF", icon: User, desc: "Regularidade perante a Receita Federal", inputType: "CPF", placeholder: "Digite o CPF (11 dígitos)... Ex: 123.456.789-00" },
     { id: "empresas", name: "Sociedades e Empresas", icon: Building2, desc: "Quadro de sócios e administradores (QSA)", inputType: "CNPJ", placeholder: "Digite o CNPJ (14 dígitos)... Ex: 00.000.000/0001-91" },

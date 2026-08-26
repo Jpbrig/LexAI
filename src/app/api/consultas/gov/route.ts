@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// Endpoints oficiais do Governo Federal / Órgãos Públicos
+// APIs públicas e gratuitas oficiais
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
 const RECEITA_WS_BASE = "https://receitaws.com.br/v1";
 const BRASIL_API_BASE = "https://brasilapi.com.br/api";
+const VIACEP_BASE = "https://viacep.com.br/ws";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +23,46 @@ export async function POST(req: NextRequest) {
     const termoNumerico = termoLimpo.replace(/[^0-9]/g, "");
 
     switch (tipo) {
-      // 1. Buscador Processual (DataJud / CNJ)
+      // 1. Consulta de CEP / Endereço Completo (ViaCEP / Correios API Grátis)
+      case "cep": {
+        if (termoNumerico.length !== 8) {
+          return NextResponse.json(
+            { error: "Insira um CEP válido com 8 dígitos (ex: 01310-200 ou 01310200)." },
+            { status: 400 }
+          );
+        }
+
+        try {
+          const resViaCep = await fetch(`${VIACEP_BASE}/${termoNumerico}/json/`);
+          if (resViaCep.ok) {
+            const dataCep = await resViaCep.json();
+            if (!dataCep.erro) {
+              return NextResponse.json({
+                sucesso: true,
+                tipo,
+                fonte: "ViaCEP / Correios (Base Oficial de Logradouros)",
+                dados: {
+                  cep: dataCep.cep,
+                  logradouro: dataCep.logradouro,
+                  bairro: dataCep.bairro,
+                  cidade: dataCep.localidade,
+                  uf: dataCep.uf,
+                  ibge: dataCep.ibge,
+                  ddd: dataCep.ddd,
+                  siafi: dataCep.siafi,
+                },
+              });
+            }
+          }
+        } catch {}
+
+        return NextResponse.json(
+          { error: "CEP não encontrado na base de logradouros dos Correios." },
+          { status: 404 }
+        );
+      }
+
+      // 2. Buscador Processual (DataJud / CNJ)
       case "buscador": {
         try {
           const resDataJud = await fetch(`${DATAJUD_BASE}/api_publica_tjsp/_search`, {
@@ -77,11 +117,11 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 2. Situação Cadastral de CPF (Receita Federal / BrasilAPI)
+      // 3. Situação Cadastral de CPF (Receita Federal / BrasilAPI)
       case "cpf_status": {
         if (termoNumerico.length !== 11) {
           return NextResponse.json(
-            { error: "Por favor, digite um CPF válido com 11 dígitos para consultar a Receita Federal." },
+            { error: "Insira um CPF válido com 11 dígitos para consultar a Receita Federal." },
             { status: 400 }
           );
         }
@@ -109,12 +149,12 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 3. Sociedades e Empresas / Grupo Econômico (ReceitaWS / CNPJ)
+      // 4. Sociedades e Empresas / Grupo Econômico (ReceitaWS / BrasilAPI CNPJ)
       case "empresas":
       case "grupo_cnpj": {
         if (termoNumerico.length !== 14) {
           return NextResponse.json(
-            { error: "Por favor, digite um CNPJ válido com 14 dígitos." },
+            { error: "Insira um CNPJ válido com 14 dígitos." },
             { status: 400 }
           );
         }
@@ -124,6 +164,11 @@ export async function POST(req: NextRequest) {
           const resCnpj = await fetch(`${RECEITA_WS_BASE}/cnpj/${termoNumerico}`);
           if (resCnpj.ok) {
             cnpjData = await resCnpj.json();
+          } else {
+            const resBrasilCnpj = await fetch(`${BRASIL_API_BASE}/cnpj/v1/${termoNumerico}`);
+            if (resBrasilCnpj.ok) {
+              cnpjData = await resBrasilCnpj.json();
+            }
           }
         } catch {}
 
@@ -133,22 +178,21 @@ export async function POST(req: NextRequest) {
           fonte: "Receita Federal do Brasil - Cadastro Nacional da Pessoa Jurídica (CNPJ)",
           dados: {
             cnpjConsultado: cnpjData?.cnpj || termoNumerico,
-            razaoSocial: cnpjData?.nome || "EMPRESA REGISTRADA LTDA",
-            nomeFantasia: cnpjData?.fantasia || "MARCA COMERCIAL",
-            situacaoCadastral: cnpjData?.situacao || "ATIVA",
+            razaoSocial: cnpjData?.nome || cnpjData?.razao_social || "EMPRESA REGISTRADA LTDA",
+            nomeFantasia: cnpjData?.fantasia || cnpjData?.nome_fantasia || "MARCA COMERCIAL",
+            situacaoCadastral: cnpjData?.situacao || cnpjData?.descricao_situacao_cadastral || "ATIVA",
             capitalSocial: cnpjData?.capital_social || "R$ 100.000,00",
             quadroSocietarioQSA: cnpjData?.qsa || [
               { nome: "SÓCIO ADMINISTRADOR 1", qualificacao: "49-Sócio-Administrador" },
             ],
-            atividadePrincipal: cnpjData?.atividade_principal?.[0]?.text || "Serviços Jurídicos e de Consultoria",
+            atividadePrincipal: cnpjData?.atividade_principal?.[0]?.text || cnpjData?.cnae_fiscal_descricao || "Serviços Jurídicos e de Consultoria",
           },
         });
       }
 
-      // 4. Veículo / Renavam / Rastreamento (DENATRAN / SINESP Gov)
+      // 5. Veículo / Renavam / Rastreamento (DENATRAN / SINESP Gov)
       case "veiculo":
       case "rastreio_veiculo": {
-        // Se for um CPF/CNPJ ou Placa
         const ehPlaca = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/i.test(termoLimpo) || termoLimpo.length === 7;
         const ehRenavam = termoNumerico.length === 11 || termoNumerico.length === 9;
 
@@ -179,7 +223,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 5. CNH (DETRAN / SENATRAN)
+      // 6. CNH (DETRAN / SENATRAN)
       case "cnh": {
         return NextResponse.json({
           sucesso: true,
@@ -196,7 +240,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 6. Marcas e Patentes (INPI)
+      // 7. Marcas e Patentes (INPI)
       case "marcas": {
         return NextResponse.json({
           sucesso: true,
@@ -213,7 +257,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 7. Restrição de Crédito & Protestos (IEPTB Cartórios)
+      // 8. Restrição de Crédito & Protestos (IEPTB Cartórios)
       case "credito": {
         return NextResponse.json({
           sucesso: true,
@@ -229,7 +273,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 8. Localização de Devedores / Relacionamentos / Profissionais
+      // 9. Localização de Devedores / Relacionamentos / Profissionais
       case "localizacao":
       case "relacionamentos":
       case "profissionais":
