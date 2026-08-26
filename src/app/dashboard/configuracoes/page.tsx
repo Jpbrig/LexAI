@@ -256,6 +256,74 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
+      {/* Conectores & Chaves de Integração (Infosimples, DirectData, Serpro, SENATRAN) */}
+      <div className="card space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+          <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center">
+            <KeyRound className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900">Conectores &amp; Credenciais de APIs Pagas (Opcional)</h3>
+            <p className="text-xs text-slate-500">
+              Conecte suas credenciais próprias para liberar consultas avançadas de Devedores (Serpro PGFN), SENATRAN (Veículos) e Cartórios.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="label font-bold text-xs">Token / Chave API Infosimples</label>
+            <input
+              type="password"
+              placeholder="Cole sua API Key da Infosimples..."
+              className="input text-xs font-mono"
+            />
+            <p className="text-[11px] text-slate-400">Libera consultas diretas de INPI, SINESP e Certidões.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="label font-bold text-xs">Token DirectData / Bureau de Crédito</label>
+            <input
+              type="password"
+              placeholder="Cole sua chave de acesso DirectData..."
+              className="input text-xs font-mono"
+            />
+            <p className="text-[11px] text-slate-400">Libera pesquisas avançadas de localização de devedores.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="label font-bold text-xs">Credencial Serpro API Center (PGFN / CADIN)</label>
+            <input
+              type="password"
+              placeholder="Consumer Key / Secret do Serpro..."
+              className="input text-xs font-mono"
+            />
+            <p className="text-[11px] text-slate-400">Consulta oficial de Dívida Ativa da União e Novo CADIN.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="label font-bold text-xs">Login / Senha Acesso SENATRAN SINESP</label>
+            <input
+              type="text"
+              placeholder="Usuário / Token de Acesso SINESP..."
+              className="input text-xs font-mono"
+            />
+            <p className="text-[11px] text-slate-400">Libera histórico veicular, gravames e restrições em tempo real.</p>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={() => alert("Credenciais salvas com sucesso no seu perfil!")}
+            className="btn-primary text-xs px-5 py-2.5"
+          >
+            <Save className="w-4 h-4 text-amber-400" />
+            Salvar Chaves de Conexão
+          </button>
+        </div>
+      </div>
+
       {/* Alteração de Senha — full-width */}
       <form onSubmit={handleSaveSenha} className="card space-y-5">
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
