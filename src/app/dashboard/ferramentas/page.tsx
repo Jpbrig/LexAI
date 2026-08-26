@@ -83,7 +83,7 @@ function FerramentasContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipoPeca: "procuracao",
+          tipoPeca: `procuracao_${tipoProcuracao}`,
           requerente: outorganteNome,
           requerido: outorgadoAdvogado,
           juizo: outorganteCidade,
@@ -1388,30 +1388,39 @@ Usuário: ${texto}`;
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
                 <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span><strong>Atenção:</strong> Revise os dados antes de imprimir. A procuração precisa ser assinada pelo outorgante e reconhecida em cartório quando exigido.</span>
+                <span><strong>Atenção:</strong> Revise os dados antes de imprimir. Você pode editar qualquer trecho do texto diretamente abaixo.</span>
               </div>
-              <textarea
-                rows={30}
-                className="w-full p-6 rounded-xl border border-slate-200 bg-white text-sm leading-relaxed text-slate-900 resize-y outline-none focus:ring-2 focus:ring-slate-300"
-                value={textoProcuracao}
-                onChange={(e) => setTextoProcuracao(e.target.value)}
-                style={{ fontFamily: "'Georgia', serif", lineHeight: "1.8" }}
-              />
+              <div id="print-document">
+                <textarea
+                  rows={30}
+                  className="w-full p-6 rounded-xl border border-slate-200 bg-white text-sm leading-relaxed text-slate-900 resize-y outline-none focus:ring-2 focus:ring-slate-300"
+                  value={textoProcuracao}
+                  onChange={(e) => setTextoProcuracao(e.target.value)}
+                  style={{ fontFamily: "'Georgia', serif", lineHeight: "1.8" }}
+                />
+              </div>
             </div>
           ) : (
-            /* Preview estático enquanto não gera com IA */
+            /* Preview estático enquanto não gera com IA — Editável e isolado para impressão */
             outorganteNome && outorgadoAdvogado ? (
               <div className="card space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 text-base">Pré-visualização (Modelo Padrão)</span>
-                  <button onClick={() => window.print()} className="btn-primary text-sm">
+                  <div>
+                    <span className="font-bold text-slate-900 text-base">Pré-visualização (Modelo Padrão)</span>
+                    <p className="text-xs text-amber-700 font-medium">✏️ Você pode clicar em qualquer texto abaixo para editar diretamente antes de imprimir!</p>
+                  </div>
+                  <button onClick={() => window.print()} className="btn-primary text-sm shadow-md">
                     <Printer className="w-4 h-4 text-amber-400" />
                     Imprimir / Salvar PDF
                   </button>
                 </div>
-                <div className="bg-white rounded-2xl p-8 border border-slate-300 shadow-inner space-y-6 text-slate-900 font-serif leading-relaxed text-justify">
+
+                <div id="print-document" className="bg-white rounded-2xl p-8 border border-slate-300 shadow-inner space-y-6 text-slate-900 font-serif leading-relaxed text-justify" contentEditable suppressContentEditableWarning>
                   <h2 className="font-bold text-center text-xl uppercase tracking-wider text-slate-900 mb-8 border-b-2 border-slate-900 pb-2">
-                    PROCURAÇÃO AD JUDICIA ET EXTRA JUDICIA
+                    {tipoProcuracao === "especial" ? "PROCURAÇÃO COM PODERES ESPECIAIS" :
+                     tipoProcuracao === "administrativa" ? "PROCURAÇÃO ADMINISTRATIVA" :
+                     tipoProcuracao === "substabelecimento" ? "SUBSTABELECIMENTO DE PROCURAÇÃO" :
+                     "PROCURAÇÃO AD JUDICIA ET EXTRA JUDICIA"}
                   </h2>
                   <p className="text-sm">
                     <strong>OUTORGANTE:</strong> <strong>{outorganteNome.toUpperCase()}</strong>, {outorganteEstadoCivil}, {outorganteProfissao || "brasileiro(a)"}, portador(a) da Cédula de Identidade RG nº {outorganteRg} e inscrito(a) no CPF/MF sob o nº {outorganteCpf}, residente e domiciliado(a) na {outorganteEndereco}{outorganteCidade ? `, ${outorganteCidade}` : ""}.
@@ -1419,17 +1428,36 @@ Usuário: ${texto}`;
                   <p className="text-sm">
                     <strong>OUTORGADO:</strong> <strong>{outorgadoAdvogado.toUpperCase()}</strong>, advogado(a) inscrito(a) na Ordem dos Advogados do Brasil sob o nº {outorgadoOab}, com escritório profissional de advocacia.
                   </p>
-                  <p className="text-sm">
-                    <strong>PODERES:</strong> Pelo presente instrumento particular de procuração, o(a) OUTORGANTE nomeia e constitui o(a) OUTORGADO(A) como seu(sua) procurador(a), concedendo-lhe amplos poderes para o foro em geral, constantes da cláusula <em>&quot;ad judicia et extra judicia&quot;</em>, em qualquer Juízo, Tribunal ou Repartição Pública.
-                  </p>
-                  <p className="text-sm">
-                    <strong>PODERES ESPECIAIS:</strong> Incluindo poderes para confessar, reconhecer a procedência do pedido, transigir, desistir, renunciar ao direito sobre o qual se funda a ação, assinar termo, firmar compromissos, receber e dar quitação, requerer execução e praticar todos os atos necessários ao bom e fiel cumprimento deste mandato.
-                  </p>
+                  
+                  {tipoProcuracao === "especial" ? (
+                    <p className="text-sm">
+                      <strong>PODERES ESPECIAIS:</strong> Pelo presente instrumento, o(a) OUTORGANTE confere ao OUTORGADO poderes especiais exclusivamente para {procObjeto || "representação em ato específico designado"}, vedado o uso para fins diversos do aqui estipulado.
+                    </p>
+                  ) : tipoProcuracao === "administrativa" ? (
+                    <p className="text-sm">
+                      <strong>PODERES ADMINISTRATIVOS:</strong> Concedendo-lhe amplos poderes para representar o(a) OUTORGANTE perante quaisquer repartições públicas federais, estaduais e municipais, INSS, Receita Federal, Prefeituras e Cartórios, podendo requerer certidões, assinar guias, protocolar requerimentos e prestar esclarecimentos.
+                    </p>
+                  ) : tipoProcuracao === "substabelecimento" ? (
+                    <p className="text-sm">
+                      <strong>SUBSTABELECIMENTO:</strong> O(A) OUTORGANTE substabelece no(a) OUTORGADO(A), com reserva de iguais poderes, os poderes que lhe foram conferidos pela procuração original, para representação nos autos do processo e atos decorrentes.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-sm">
+                        <strong>PODERES:</strong> Pelo presente instrumento particular de procuração, o(a) OUTORGANTE nomeia e constitui o(a) OUTORGADO(A) como seu(sua) procurador(a), concedendo-lhe amplos poderes para o foro em geral, constantes da cláusula <em>&quot;ad judicia et extra judicia&quot;</em>, em qualquer Juízo, Tribunal ou Repartição Pública.
+                      </p>
+                      <p className="text-sm">
+                        <strong>PODERES ESPECIAIS:</strong> Incluindo poderes para confessar, reconhecer a procedência do pedido, transigir, desistir, renunciar ao direito sobre o qual se funda a ação, assinar termo, firmar compromissos, receber e dar quitação, requerer execução e praticar todos os atos necessários ao bom e fiel cumprimento deste mandato.
+                      </p>
+                    </>
+                  )}
+
                   {procObjeto && (
                     <p className="text-sm">
-                      <strong>OBJETO:</strong> {procObjeto}.
+                      <strong>OBJETO DA DEMANDA:</strong> {procObjeto}.
                     </p>
                   )}
+
                   <div className="pt-16 text-center text-sm space-y-12">
                     <p>{outorganteCidade || "São Paulo/SP"}, {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}.</p>
                     <div className="inline-block border-t border-slate-900 px-12 pt-2">
