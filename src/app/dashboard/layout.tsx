@@ -20,11 +20,15 @@ import {
   Bot,
   FileSignature,
   DollarSign,
+  Users,
+  Calendar,
 } from "lucide-react";
 
 const mainNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/processos", label: "Meus Processos", icon: FileText },
+  { href: "/dashboard/clientes", label: "Meus Clientes (CRM)", icon: Users },
+  { href: "/dashboard/agenda", label: "Agenda & Prazos", icon: Calendar },
 ];
 
 const ferramentasNavItems = [
@@ -35,6 +39,7 @@ const ferramentasNavItems = [
   { href: "/dashboard/ferramentas?tab=peticoes", tab: "peticoes", label: "Petições IA (Gemini)", icon: Bot },
   { href: "/dashboard/ferramentas?tab=assistente", tab: "assistente", label: "I.A. Assistente Jurídico", icon: Sparkles },
   { href: "/dashboard/ferramentas?tab=jurisprudencia", tab: "jurisprudencia", label: "Pesquisador de Jurisprudências", icon: Scale },
+  { href: "/dashboard/ferramentas?tab=vademecum", tab: "vademecum", label: "Vade Mecum Digital & Códigos", icon: FileText },
   { href: "/dashboard/ferramentas?tab=financeiro", tab: "financeiro", label: "Gestão Financeira & Honorários", icon: DollarSign },
   { href: "/dashboard/ferramentas?tab=assinatura", tab: "assinatura", label: "Assinatura Eletrônica (ClicSign)", icon: FileSignature },
 ];
