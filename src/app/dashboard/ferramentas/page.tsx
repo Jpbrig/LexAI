@@ -535,10 +535,13 @@ function FerramentasContent() {
                     <div>
                       <label className="label">Último Salário Bruto (R$)</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">R$</span>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none select-none">
+                          R$
+                        </span>
                         <input
                           type="number"
-                          className="input pl-9"
+                          placeholder="0,00"
+                          className="input pl-12 font-semibold"
                           value={salario}
                           onChange={(e) => setSalario(e.target.value)}
                         />
@@ -647,11 +650,13 @@ function FerramentasContent() {
                         {calculosLista.find((c) => c.id === selectedCalc)?.labelValor || "Valor de Origem (R$)"}
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">R$</span>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold pointer-events-none select-none">
+                          R$
+                        </span>
                         <input
                           type="number"
-                          placeholder="Digite o valor..."
-                          className="input pl-9 font-semibold"
+                          placeholder="0,00"
+                          className="input pl-12 font-semibold"
                           value={valorBase}
                           onChange={(e) => setValorBase(e.target.value)}
                         />
