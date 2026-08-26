@@ -57,9 +57,9 @@ function FerramentasContent() {
   const [outorgadoAdvogado, setOutorgadoAdvogado] = useState("Dr. Usuário Teste");
   const [outorgadoOab, setOutorgadoOab] = useState("SP 123456");
 
-  const [valorBase, setValorBase] = useState<string>("10000");
-  const [taxaJuros, setTaxaJuros] = useState<string>("1");
-  const [meses, setMeses] = useState<string>("12");
+  const [valorBase, setValorBase] = useState<string>("");
+  const [taxaJuros, setTaxaJuros] = useState<string>("");
+  const [meses, setMeses] = useState<string>("");
   const [consultaTermo, setConsultaTermo] = useState<string>("");
 
   // Governamental API state
@@ -643,38 +643,41 @@ function FerramentasContent() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                      <label className="label">
+                      <label className="label font-bold text-slate-800">
                         {calculosLista.find((c) => c.id === selectedCalc)?.labelValor || "Valor de Origem (R$)"}
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">R$</span>
                         <input
                           type="number"
-                          className="input pl-9"
+                          placeholder="Digite o valor..."
+                          className="input pl-9 font-semibold"
                           value={valorBase}
                           onChange={(e) => setValorBase(e.target.value)}
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="label">
+                      <label className="label font-bold text-slate-800">
                         {calculosLista.find((c) => c.id === selectedCalc)?.labelTaxa || "Taxa / Índice (%)"}
                       </label>
                       <input
                         type="number"
-                        step="0.1"
-                        className="input"
+                        step="0.01"
+                        placeholder="Digite o percentual..."
+                        className="input font-semibold"
                         value={taxaJuros}
                         onChange={(e) => setTaxaJuros(e.target.value)}
                       />
                     </div>
                     <div>
-                      <label className="label">
-                        {calculosLista.find((c) => c.id === selectedCalc)?.labelMeses || "Período (Meses)"}
+                      <label className="label font-bold text-slate-800">
+                        {calculosLista.find((c) => c.id === selectedCalc)?.labelMeses || "Período (Meses / Anos)"}
                       </label>
                       <input
                         type="number"
-                        className="input"
+                        placeholder="Digite a quantidade..."
+                        className="input font-semibold"
                         value={meses}
                         onChange={(e) => setMeses(e.target.value)}
                       />
