@@ -25,6 +25,7 @@ import {
   DollarSign as MoneyIcon,
   Scale,
   CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
 function FerramentasContent() {
@@ -54,11 +55,40 @@ function FerramentasContent() {
   const [outorgadoAdvogado, setOutorgadoAdvogado] = useState("Dr. Usuário Teste");
   const [outorgadoOab, setOutorgadoOab] = useState("SP 123456");
 
-  // Outras calculadoras / consultas genéricas state
   const [valorBase, setValorBase] = useState<string>("10000");
   const [taxaJuros, setTaxaJuros] = useState<string>("1");
   const [meses, setMeses] = useState<string>("12");
   const [consultaTermo, setConsultaTermo] = useState<string>("");
+
+  // Governamental API state
+  const [loadingGov, setLoadingGov] = useState<boolean>(false);
+  const [resultadoGov, setResultadoGov] = useState<any>(null);
+  const [errorGov, setErrorGov] = useState<string>("");
+
+  async function executarConsultaGov() {
+    if (!consultaTermo) return;
+    setLoadingGov(true);
+    setErrorGov("");
+    setResultadoGov(null);
+
+    try {
+      const res = await fetch("/api/consultas/gov", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: selectedConsulta, termo: consultaTermo }),
+      });
+      const data = await res.json();
+      if (res.ok && data.sucesso) {
+        setResultadoGov(data);
+      } else {
+        setErrorGov(data.error || "Erro ao consultar servidores oficiais.");
+      }
+    } catch {
+      setErrorGov("Erro de conexão ao acessar a API oficial do governo.");
+    } finally {
+      setLoadingGov(false);
+    }
+  }
 
   // Cálculo trabalhista
   const sal = parseFloat(salario) || 0;
@@ -361,19 +391,49 @@ function FerramentasContent() {
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
-                placeholder={`Digite o termo para buscar (${consultasLista.find((c) => c.id === selectedConsulta)?.name})...`}
+                placeholder={`Digite o CPF, CNPJ, Nome, OAB ou Placa para consultar (${consultasLista.find((c) => c.id === selectedConsulta)?.name})...`}
                 className="input flex-1"
                 value={consultaTermo}
                 onChange={(e) => setConsultaTermo(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && executarConsultaGov()}
               />
-              <button className="btn-primary text-xs px-6 py-3 justify-center">
-                <Search className="w-4 h-4 text-amber-400" />
-                Realizar Consulta
+              <button
+                onClick={executarConsultaGov}
+                disabled={loadingGov || !consultaTermo}
+                className="btn-primary text-xs px-6 py-3 justify-center disabled:opacity-50"
+              >
+                <Search className={`w-4 h-4 text-amber-400 ${loadingGov ? "animate-spin" : ""}`} />
+                {loadingGov ? "Consultando Servidores..." : "Consultar API Oficial"}
               </button>
             </div>
+
+            {errorGov && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{errorGov}</span>
+              </div>
+            )}
+
+            {resultadoGov && (
+              <div className="p-5 bg-slate-900 text-white rounded-2xl space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    Resposta Retornada da Base Oficial ({resultadoGov.fonte})
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">STATUS: 200 OK</span>
+                </div>
+                <pre className="text-xs font-mono bg-slate-950 p-4 rounded-xl overflow-x-auto text-emerald-400 border border-slate-800 max-h-80">
+                  {JSON.stringify(resultadoGov.dados, null, 2)}
+                </pre>
+              </div>
+            )}
+
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 flex items-center gap-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-              <span>Conexão direta aos bancos de dados oficiais e fontes consolidadas. Insira o dado acima para executar a busca.</span>
+              <span>
+                Conexão direta aos servidores públicos e bases governamentais (DataJud/CNJ, Receita Federal, SENATRAN e INPI).
+              </span>
             </div>
           </div>
         </div>
