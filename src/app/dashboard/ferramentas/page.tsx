@@ -647,7 +647,6 @@ Usuário: ${texto}`;
 
   const outrosLista = [
     { id: "novos_clientes", name: "Captação de Novos Clientes", icon: Users, desc: "Conexão com potenciais clientes jurídicos" },
-    { id: "monitoramento", name: "Monitoramento de Processos", icon: Search, desc: "Alertas automáticos a cada movimentação" },
     { id: "assinatura", name: "Assinatura Eletrônica", icon: FileSignature, desc: "Envio de contratos para assinatura digital com validade legal" },
     { id: "ia_sites", name: "I.A. Criador de Sites para Escritórios", icon: Globe, desc: "Crie o site do seu escritório em 5 minutos" },
     { id: "financeiro", name: "Gestão Financeira & Honorários", icon: MoneyIcon, desc: "Controle de caixa, faturamento e honorários sucumbenciais" },
