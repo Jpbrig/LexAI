@@ -26,8 +26,6 @@ import {
   Layers,
 } from "lucide-react";
 
-const totalAgentesEcosystem = 1940;
-
 const features = [
   {
     icon: UserCheck,
@@ -61,8 +59,8 @@ const features = [
   },
   {
     icon: Bot,
-    title: `Orquestrador de ${totalAgentesEcosystem} Agentes IA`,
-    desc: "Integração direta com o ecossistema AgentHub com 1.940 agentes especializados em minutas, atos societários DREI e compliance.",
+    title: "IA Jurídica Especializada",
+    desc: "Elabore minutas, atos societários, análises de risco processual e teses com inteligência artificial.",
     color: "bg-amber-500 text-white",
   },
 ];
@@ -96,7 +94,7 @@ const planos = [
       "IA ilimitada para resumos",
       "Calculadora trabalhista ilimitada",
       "Gerador de procurações ilimitado",
-      "Acesso completo aos 1.940 Agentes de IA",
+      "Inteligência Artificial para Minutas & Teses",
       "Suporte prioritário",
     ],
     btn: "bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20",
@@ -136,7 +134,6 @@ export default function LandingPage() {
 
             <div className="hidden md:flex items-center gap-6 text-xs font-bold text-slate-600">
               <a href="#features" className="hover:text-slate-900 transition-colors">Funcionalidades</a>
-              <a href="#agentes" className="hover:text-slate-900 transition-colors">1.940 Agentes</a>
               <a href="#planos" className="hover:text-slate-900 transition-colors">Planos</a>
             </div>
 
@@ -167,7 +164,7 @@ export default function LandingPage() {
 
             <h1 className="font-display text-3xl sm:text-5xl lg:text-7xl font-bold text-white leading-tight mb-6 tracking-tight">
               A Plataforma Jurídica Completa<br />
-              <span className="text-amber-400">com Busca por CPF & {totalAgentesEcosystem} Agentes</span>
+              <span className="text-amber-400">com IA, DataJud &amp; Busca por CPF</span>
             </h1>
 
             <p className="text-slate-300 text-sm sm:text-lg max-w-3xl mx-auto mb-10 leading-relaxed">
@@ -188,10 +185,6 @@ export default function LandingPage() {
           {/* Stats Bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-16 max-w-4xl mx-auto border-t border-slate-800 pt-10 text-left">
             <div>
-              <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">1.940</p>
-              <p className="text-slate-400 text-xs mt-0.5">Agentes Especializados</p>
-            </div>
-            <div>
               <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">100%</p>
               <p className="text-slate-400 text-xs mt-0.5">Tribunais do Brasil</p>
             </div>
@@ -200,24 +193,28 @@ export default function LandingPage() {
               <p className="text-slate-400 text-xs mt-0.5">Cálculo Rescisório CLT</p>
             </div>
             <div>
-              <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">0 Mocks</p>
-              <p className="text-slate-400 text-xs mt-0.5">Banco Supabase Real</p>
+              <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">DataJud</p>
+              <p className="text-slate-400 text-xs mt-0.5">API Oficial do CNJ</p>
+            </div>
+            <div>
+              <p className="font-display text-2xl sm:text-3xl font-bold text-amber-400">IA</p>
+              <p className="text-slate-400 text-xs mt-0.5">Resumos Inteligentes</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* AGENTS BANNER */}
-      <section id="agentes" className="py-16 bg-amber-500 text-slate-900">
+      {/* DIFFERENTIALS BANNER */}
+      <section className="py-16 bg-amber-500 text-slate-900">
         <div className="max-w-7xl mx-auto px-4 text-center space-y-4">
           <span className="bg-slate-900 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-            AgentHub Ecosystem
+            Por que o LexAI?
           </span>
           <h2 className="font-display text-2xl sm:text-4xl font-bold tracking-tight">
-            Mais de 1.940 Agentes de IA Trabalhando para o Seu Escritório
+            Tecnologia Jurídica Real, Sem Promessas Vazias
           </h2>
           <p className="text-slate-900/80 text-xs sm:text-sm max-w-2xl mx-auto font-medium">
-            De pareceres de risco processual a atos societários no padrão DREI — nosso orquestrador conecta sua demanda ao agente especializado ideal.
+            Conectado à API oficial do CNJ (DataJud), busca por CPF no Jusbrasil, cálculos trabalhistas e geração de documentos — tudo integrado em um único painel.
           </p>
         </div>
       </section>
@@ -312,7 +309,7 @@ export default function LandingPage() {
             </div>
             <span className="font-display text-base font-bold text-white">LexAI</span>
           </div>
-          <p>© 2026 LexAI. Integrado ao AgentHub com 1.940 agentes.</p>
+          <p>© 2026 LexAI. Plataforma Inteligente para Advogados.</p>
         </div>
       </footer>
     </div>
