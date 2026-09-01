@@ -1,154 +1,186 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { seedDatabase } from "@/lib/seed";
 import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
+import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { createUserSchema, updateUserSchema } from "@/lib/validation";
 
-// Helper: extrai userId do cookie de sessão
-function getUserIdFromRequest(req: NextRequest): string | null {
-  const sessionUserId =
-    req.cookies.get("lexai_session")?.value ||
-    req.cookies.get("next-auth.session-token")?.value ||
-    req.cookies.get("__Secure-next-auth.session-token")?.value;
-
-  if (!sessionUserId || sessionUserId === "authenticated") return null;
-  return sessionUserId;
+function safeUser(user: {
+  id: string;
+  name: string | null;
+  email: string | null;
+  emailVerified: Date | null;
+  image: string | null;
+  oab: string | null;
+  plano: string;
+  trialEndsAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}) {
+  return user;
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    await seedDatabase();
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
 
-    // ✅ Segurança: usar ID da sessão, não e-mail hardcoded
-    const userId = getUserIdFromRequest(req);
-    let user;
+    const user = await prisma.user.findUnique({
+      where: { id: context.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        oab: true,
+        plano: true,
+        trialEndsAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
 
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
-    }
-
-    // Fallback para conta de demo durante desenvolvimento
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { email: "teste@lexai.com.br" },
-      });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
-
-    // Nunca retornar o hash da senha
-    const { passwordHash: _, ...userSafe } = user as any;
-    return NextResponse.json(userSafe);
-  } catch (error: any) {
+    if (!user) return unauthorizedResponse();
+    return NextResponse.json(safeUser(user));
+  } catch (error) {
     console.error("Erro ao carregar usuário:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao carregar configurações" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao carregar configurações." }, { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { name, email, oab, image, newPassword } = await req.json();
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
 
-    // ✅ Segurança: usar ID da sessão, não e-mail hardcoded
-    const userId = getUserIdFromRequest(req);
-    let user;
-
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
+    const body = await req.json();
+    const parsed = updateUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dados de perfil inválidos.", fields: parsed.error.flatten().fieldErrors },
+        { status: 400 },
+      );
     }
 
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { email: "teste@lexai.com.br" },
-      });
-    }
+    const { currentPassword, newPassword, ...profile } = parsed.data;
+    const currentUser = await prisma.user.findUnique({
+      where: { id: context.userId },
+      select: { passwordHash: true },
+    });
 
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
+    if (!currentUser) return unauthorizedResponse();
 
-    // Montar objeto de atualização
-    const updateData: any = {
-      name: name !== undefined ? name : user.name,
-      email: email !== undefined ? email : user.email,
-      oab: oab !== undefined ? oab : user.oab,
-      image: image !== undefined ? image : user.image,
-    };
+    let passwordHash: string | undefined;
+    if (newPassword) {
+      if (!currentUser.passwordHash || !currentPassword) {
+        return NextResponse.json({ error: "Senha atual inválida." }, { status: 400 });
+      }
 
-    // ✅ Se trocar senha, gerar novo hash bcrypt
-    if (newPassword && newPassword.length >= 8) {
-      updateData.passwordHash = await bcrypt.hash(newPassword, 12);
+      const passwordMatches = await bcrypt.compare(currentPassword, currentUser.passwordHash);
+      if (!passwordMatches) {
+        return NextResponse.json({ error: "Senha atual inválida." }, { status: 400 });
+      }
+
+      passwordHash = await bcrypt.hash(newPassword, 12);
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: user.id },
-      data: updateData,
-    });
-
-    // Nunca retornar o hash da senha
-    const { passwordHash: _, ...updatedSafe } = updatedUser as any;
-    return NextResponse.json(updatedSafe);
-  } catch (error: any) {
-    console.error("Erro ao atualizar usuário:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao atualizar dados" },
-      { status: 500 }
-    );
-  }
-}
-
-// ✅ Rota de cadastro: cria novo usuário com senha hasheada
-export async function POST(req: NextRequest) {
-  try {
-    const { name, email, password, oab } = await req.json();
-
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: "Nome, e-mail e senha são obrigatórios." },
-        { status: 400 }
-      );
-    }
-
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "A senha deve ter no mínimo 8 caracteres." },
-        { status: 400 }
-      );
-    }
-
-    // Verificar se e-mail já existe
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) {
-      return NextResponse.json(
-        { error: "Este e-mail já está cadastrado. Faça login." },
-        { status: 409 }
-      );
-    }
-
-    // ✅ Hash da senha com bcrypt (custo 12)
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    const newUser = await prisma.user.create({
+      where: { id: context.userId },
       data: {
-        name,
-        email,
-        passwordHash,
-        oab: oab || null,
-        plano: "FREE",
+        ...profile,
+        ...(passwordHash ? { passwordHash } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        image: true,
+        oab: true,
+        plano: true,
+        trialEndsAt: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
-    const { passwordHash: _, ...newUserSafe } = newUser as any;
-    return NextResponse.json(newUserSafe, { status: 201 });
-  } catch (error: any) {
+    if (passwordHash) {
+      await prisma.appSession.updateMany({
+        where: { userId: context.userId, id: { not: context.sessionId }, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
+    return NextResponse.json(safeUser(updatedUser));
+  } catch (error) {
+    console.error("Erro ao atualizar usuário:", error);
+    return NextResponse.json({ error: "Erro ao atualizar dados." }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const parsed = createUserSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dados de cadastro inválidos.", fields: parsed.error.flatten().fieldErrors },
+        { status: 400 },
+      );
+    }
+
+    const { name, email, password, oab } = parsed.data;
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (existing) {
+      return NextResponse.json({ error: "Não foi possível concluir o cadastro com esses dados." }, { status: 409 });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const newUser = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          oab: oab || null,
+          plano: "FREE",
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          emailVerified: true,
+          image: true,
+          oab: true,
+          plano: true,
+          trialEndsAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      const workspace = await tx.workspace.create({
+        data: {
+          name: `Escritório de ${name}`,
+          ownerId: user.id,
+        },
+      });
+
+      await tx.membership.create({
+        data: {
+          workspaceId: workspace.id,
+          userId: user.id,
+          role: "OWNER",
+          status: "ACTIVE",
+        },
+      });
+
+      return user;
+    });
+
+    return NextResponse.json(safeUser(newUser), { status: 201 });
+  } catch (error) {
     console.error("Erro ao criar usuário:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao criar conta." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao criar conta." }, { status: 500 });
   }
 }

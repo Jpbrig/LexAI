@@ -9,7 +9,6 @@ import {
   Filter,
   FileText,
   ArrowRight,
-  AlertCircle,
   CheckCircle,
   Clock,
   Archive,
@@ -17,6 +16,7 @@ import {
   RefreshCw,
   Loader2,
 } from "lucide-react";
+import type { ProcessoListItem } from "@/lib/types";
 
 const statusConfig: Record<string, { label: string; className: string; icon: React.ElementType }> = {
   ATIVO: { label: "Ativo", className: "badge-success", icon: CheckCircle },
@@ -26,27 +26,48 @@ const statusConfig: Record<string, { label: string; className: string; icon: Rea
 };
 
 export default function ProcessosPage() {
-  const [processos, setProcessos] = useState<any[]>([]);
+  const [processos, setProcessos] = useState<ProcessoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("TODOS");
 
+  async function buscarProcessos() {
+    try {
+      const response = await fetch("/api/processos");
+      const data = (await response.json()) as unknown;
+      setProcessos(Array.isArray(data) ? (data as ProcessoListItem[]) : []);
+    } catch (error) {
+      console.error("Erro ao carregar processos:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function carregarProcessos() {
     setLoading(true);
-    fetch("/api/processos")
-      .then((res) => res.json())
-      .then((data) => {
-        setProcessos(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Erro ao carregar processos:", err);
-        setLoading(false);
-      });
+    void buscarProcessos();
   }
 
   useEffect(() => {
-    carregarProcessos();
+    const controller = new AbortController();
+
+    async function carregarProcessosInicialmente() {
+      try {
+        const response = await fetch("/api/processos", { signal: controller.signal });
+        const data = (await response.json()) as unknown;
+        if (!controller.signal.aborted) {
+          setProcessos(Array.isArray(data) ? (data as ProcessoListItem[]) : []);
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("Erro ao carregar processos:", error);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void carregarProcessosInicialmente();
+    return () => controller.abort();
   }, []);
 
   const filtered = processos.filter((p) => {
@@ -69,7 +90,12 @@ export default function ProcessosPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={carregarProcessos} className="btn-outline text-sm py-2 px-3">
+          <button
+            type="button"
+            onClick={carregarProcessos}
+            className="btn-outline text-sm py-2 px-3"
+            aria-label="Atualizar processos"
+          >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Atualizar
           </button>
@@ -87,6 +113,7 @@ export default function ProcessosPage() {
           <input
             type="text"
             placeholder="Buscar por número CNJ, classe ou tribunal..."
+            aria-label="Buscar processos por número CNJ, classe ou tribunal"
             className="input text-sm"
             style={{ paddingLeft: "2.75rem" }}
             value={search}

@@ -1,72 +1,73 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { seedDatabase } from "@/lib/seed";
+import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 
-export async function GET(req: NextRequest) {
+export const dynamic = "force-dynamic";
+
+export async function GET() {
   try {
-    // Garante que o banco Supabase tem dados iniciais
-    await seedDatabase();
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
 
-    const user = await prisma.user.findFirst({
-      where: { email: "teste@lexai.com.br" },
-      include: {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const user = await prisma.user.findUnique({
+      where: { id: context.userId },
+      select: {
+        name: true,
+        email: true,
+        oab: true,
+        plano: true,
         processos: {
+          where: { workspaceId: context.workspaceId },
           include: {
             movimentacoes: {
               orderBy: { data: "desc" },
             },
-            alertas: true,
+            alertas: {
+              where: { workspaceId: context.workspaceId },
+            },
           },
           orderBy: { updatedAt: "desc" },
         },
-        alertas: true,
+        alertas: {
+          where: { workspaceId: context.workspaceId, ativo: true },
+        },
       },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
+    if (!user) return unauthorizedResponse();
 
-    const totalProcessos = user.processos.length;
-    const processosAtivos = user.processos.filter((p) => p.status === "ATIVO").length;
-    const totalAlertas = user.alertas.filter((a) => a.ativo).length;
-
-    // Coleta todas as movimentações dos processos
-    const todasMovimentacoes = user.processos.flatMap((p) =>
-      p.movimentacoes.map((m) => ({
-        id: m.id,
-        processoId: p.id,
-        processo: p.numeroCnj,
-        tribunal: p.tribunal,
-        tipo: m.tipo,
-        descricao: m.descricao,
-        resumoIa: m.resumoIa,
-        data: m.data,
-        urgente: m.tipo === "Sentença" || m.tipo === "Acórdão",
-      }))
-    ).sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+    const todasMovimentacoes = user.processos
+      .flatMap((processo) =>
+        processo.movimentacoes.map((movimentacao) => ({
+          id: movimentacao.id,
+          processoId: processo.id,
+          processo: processo.numeroCnj,
+          tribunal: processo.tribunal,
+          tipo: movimentacao.tipo,
+          descricao: movimentacao.descricao,
+          resumoIa: movimentacao.resumoIa,
+          data: movimentacao.data,
+          urgente: movimentacao.tipo === "Sentença" || movimentacao.tipo === "Acórdão",
+        })),
+      )
+      .sort((a, b) => b.data.getTime() - a.data.getTime());
 
     return NextResponse.json({
-      user: {
-        name: user.name,
-        email: user.email,
-        oab: user.oab,
-        plano: user.plano,
-      },
+      user,
       stats: {
-        totalProcessos,
-        processosAtivos,
-        movimentacoesHoje: todasMovimentacoes.length,
-        totalAlertas,
+        totalProcessos: user.processos.length,
+        processosAtivos: user.processos.filter((processo) => processo.status === "ATIVO").length,
+        movimentacoesHoje: todasMovimentacoes.filter((movimentacao) => movimentacao.data >= startOfToday).length,
+        totalAlertas: user.alertas.length,
       },
       processos: user.processos,
       recentMovimentacoes: todasMovimentacoes,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro na API do dashboard:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao carregar dados do banco" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao carregar dados do dashboard." }, { status: 500 });
   }
 }

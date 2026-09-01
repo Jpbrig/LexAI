@@ -1,91 +1,95 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { canMutate } from "@/lib/authorization";
+import { getAuthContext, forbiddenResponse, notFoundResponse, unauthorizedResponse } from "@/lib/auth-guard";
+import { alertaPatchSchema, alertaSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const user = await prisma.user.findFirst({
-      where: { email: "teste@lexai.com.br" },
-    });
-
-    if (!user) {
-      return NextResponse.json([]);
-    }
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
 
     const alertas = await prisma.alerta.findMany({
-      where: { userId: user.id },
-      include: {
-        processo: true,
-      },
+      where: { workspaceId: context.workspaceId },
+      include: { processo: true },
       orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json(alertas);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro ao listar alertas:", error);
-    return NextResponse.json([], { status: 200 });
+    return NextResponse.json({ error: "Erro ao listar alertas." }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { processoId, tipo, canal } = await req.json();
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
+    if (!canMutate(context)) return forbiddenResponse();
 
-    if (!processoId) {
-      return NextResponse.json({ error: "processoId é obrigatório" }, { status: 400 });
+    const parsed = alertaSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dados do alerta inválidos." }, { status: 400 });
     }
 
-    const user = await prisma.user.findFirst({
-      where: { email: "teste@lexai.com.br" },
+    const processo = await prisma.processo.findFirst({
+      where: { id: parsed.data.processoId, workspaceId: context.workspaceId },
+      select: { id: true },
     });
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
+    if (!processo) return notFoundResponse();
 
     const novoAlerta = await prisma.alerta.create({
       data: {
-        userId: user.id,
-        processoId,
-        tipo: tipo || "QUALQUER_MOVIMENTACAO",
-        canal: canal || "EMAIL",
-        ativo: true,
+        userId: context.userId,
+        workspaceId: context.workspaceId,
+        ...parsed.data,
       },
-      include: {
-        processo: true,
-      },
+      include: { processo: true },
     });
 
     return NextResponse.json(novoAlerta, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorCode = error && typeof error === "object" && "code" in error ? error.code : null;
+    if (errorCode === "P2002") {
+      return NextResponse.json({ error: "Este alerta já existe para o processo." }, { status: 409 });
+    }
+
     console.error("Erro ao criar alerta:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao criar alerta" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao criar alerta." }, { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { id, ativo } = await req.json();
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
+    if (!canMutate(context)) return forbiddenResponse();
 
-    if (!id) {
-      return NextResponse.json({ error: "ID do alerta é obrigatório" }, { status: 400 });
+    const parsed = alertaPatchSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dados de atualização inválidos." }, { status: 400 });
     }
 
-    const alerta = await prisma.alerta.update({
-      where: { id },
-      data: { ativo },
+    const updated = await prisma.alerta.updateMany({
+      where: {
+        id: parsed.data.id,
+        workspaceId: context.workspaceId,
+      },
+      data: { ativo: parsed.data.ativo },
     });
 
+    if (updated.count === 0) return notFoundResponse();
+
+    const alerta = await prisma.alerta.findFirst({
+      where: { id: parsed.data.id, workspaceId: context.workspaceId },
+      include: { processo: true },
+    });
     return NextResponse.json(alerta);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro ao atualizar alerta:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao atualizar alerta" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao atualizar alerta." }, { status: 500 });
   }
 }

@@ -123,8 +123,11 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
-    console.error("Erro crítico na rota de login:", error?.message ?? error);
+  } catch (error: unknown) {
+    console.error(
+      "Erro crítico na rota de login:",
+      error instanceof Error ? error.message : error,
+    );
     return NextResponse.json(
       { error: "Erro interno ao realizar login. Tente novamente." },
       { status: 500 }

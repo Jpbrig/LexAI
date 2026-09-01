@@ -1,114 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { seedDatabase } from "@/lib/seed";
+import { canMutate } from "@/lib/authorization";
+import { getAuthContext, forbiddenResponse, notFoundResponse, unauthorizedResponse } from "@/lib/auth-guard";
+import { agendaPatchSchema, agendaSchema } from "@/lib/validation";
 
-function getUserIdFromRequest(req: NextRequest): string | null {
-  const sessionUserId =
-    req.cookies.get("lexai_session")?.value ||
-    req.cookies.get("next-auth.session-token")?.value ||
-    req.cookies.get("__Secure-next-auth.session-token")?.value;
+export const dynamic = "force-dynamic";
 
-  if (!sessionUserId || sessionUserId === "authenticated") return null;
-  return sessionUserId;
-}
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    await seedDatabase();
-    const userId = getUserIdFromRequest(req);
-    let user;
-
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
-    }
-
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { email: "teste@lexai.com.br" },
-      });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
 
     const eventos = await prisma.eventoAgenda.findMany({
-      where: { userId: user.id },
-      orderBy: { data: "asc" },
+      where: { workspaceId: context.workspaceId },
+      orderBy: [{ data: "asc" }, { hora: "asc" }],
     });
 
     return NextResponse.json(eventos);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro ao buscar agenda:", error);
-    return NextResponse.json({ error: "Erro ao buscar agenda" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar agenda." }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    await seedDatabase();
-    const userId = getUserIdFromRequest(req);
-    let user;
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
+    if (!canMutate(context)) return forbiddenResponse();
 
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
+    const parsed = agendaSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dados do evento inválidos." }, { status: 400 });
     }
 
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { email: "teste@lexai.com.br" },
-      });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
-
-    const body = await req.json();
-    const { titulo, tipo, data, hora, processo, cliente, prioridade } = body;
-
-    if (!titulo || !data) {
-      return NextResponse.json({ error: "Título e data são obrigatórios" }, { status: 400 });
-    }
-
-    const novoEvento = await prisma.eventoAgenda.create({
+    const evento = await prisma.eventoAgenda.create({
       data: {
-        userId: user.id,
-        titulo,
-        tipo: tipo || "Prazo Processual",
-        data,
-        hora: hora || "17:00",
-        processo: processo || "N/A",
-        cliente: cliente || "Geral",
-        prioridade: prioridade || "Alta",
-        status: "Pendente",
+        userId: context.userId,
+        workspaceId: context.workspaceId,
+        ...parsed.data,
       },
     });
 
-    return NextResponse.json(novoEvento, { status: 201 });
-  } catch (error: any) {
+    return NextResponse.json(evento, { status: 201 });
+  } catch (error) {
     console.error("Erro ao criar evento na agenda:", error);
-    return NextResponse.json({ error: "Erro ao criar evento na agenda" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao criar evento na agenda." }, { status: 500 });
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { id, status } = body;
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
+    if (!canMutate(context)) return forbiddenResponse();
 
-    if (!id) {
-      return NextResponse.json({ error: "ID do evento é obrigatório" }, { status: 400 });
+    const parsed = agendaPatchSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dados de atualização inválidos." }, { status: 400 });
     }
 
-    const eventoAtualizado = await prisma.eventoAgenda.update({
-      where: { id },
-      data: { status },
+    const updated = await prisma.eventoAgenda.updateMany({
+      where: {
+        id: parsed.data.id,
+        workspaceId: context.workspaceId,
+      },
+      data: { status: parsed.data.status },
     });
 
-    return NextResponse.json(eventoAtualizado);
-  } catch (error: any) {
+    if (updated.count === 0) return notFoundResponse();
+
+    const evento = await prisma.eventoAgenda.findFirst({
+      where: { id: parsed.data.id, workspaceId: context.workspaceId },
+    });
+    return NextResponse.json(evento);
+  } catch (error) {
     console.error("Erro ao atualizar evento na agenda:", error);
-    return NextResponse.json({ error: "Erro ao atualizar evento" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao atualizar evento." }, { status: 500 });
   }
 }

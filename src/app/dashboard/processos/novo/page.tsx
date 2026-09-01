@@ -4,14 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, Search, Loader2, Plus, Info, CheckCircle, UserCheck, Scale, FileText } from "lucide-react";
-
-const tribunais = [
-  "TJSP", "TJRJ", "TJMG", "TJRS", "TJPR", "TJSC", "TJBA", "TJPE", "TJCE", "TJGO",
-  "TRF1", "TRF2", "TRF3", "TRF4", "TRF5", "TRF6",
-  "TRT1", "TRT2", "TRT3", "TRT4", "TRT15",
-  "STJ", "STF", "TST", "TSE", "STM",
-];
+import { ArrowLeft, Search, Loader2, Plus, Info, CheckCircle, UserCheck, Scale } from "lucide-react";
+import type { DataJudLookupResponse, ProcessoBuscaResult } from "@/lib/types";
 
 export default function NovoProcessoPage() {
   const router = useRouter();
@@ -19,13 +13,12 @@ export default function NovoProcessoPage() {
   const [numeroCnj, setNumeroCnj] = useState("");
   const [cpfNome, setCpfNome] = useState("");
   const [tribunal, setTribunal] = useState("");
-  const [notas, setNotas] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [foundCNJ, setFoundCNJ] = useState<null | { classe: string; assunto: string; orgaoJulgador: string }>(null);
-  const [resultadosCPF, setResultadosCPF] = useState<any[]>([]);
+  const [resultadosCPF, setResultadosCPF] = useState<ProcessoBuscaResult[]>([]);
   const [error, setError] = useState("");
 
   function formatCnj(value: string) {
@@ -54,7 +47,7 @@ export default function NovoProcessoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ numeroCnj, tribunal }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as DataJudLookupResponse;
       if (res.ok && data) {
         setFoundCNJ({
           classe: data.classe || "Ação Cível",
@@ -62,8 +55,10 @@ export default function NovoProcessoPage() {
           orgaoJulgador: data.orgaoJulgador || "Vara Cível Central",
         });
         if (data.tribunal) setTribunal(data.tribunal);
+      } else {
+        setError(data.error || "Não foi possível localizar o processo no DataJud.");
       }
-    } catch (err) {
+    } catch {
       setError("Erro ao buscar no DataJud.");
     } finally {
       setLoading(false);
@@ -85,20 +80,20 @@ export default function NovoProcessoPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ termo: cpfNome }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as { processos?: ProcessoBuscaResult[]; error?: string };
       if (res.ok && data.processos) {
         setResultadosCPF(data.processos);
       } else {
         setError(data.error || "Nenhum processo encontrado para este CPF.");
       }
-    } catch (err) {
+    } catch {
       setError("Erro ao realizar busca por CPF no Jusbrasil.");
     } finally {
       setLoading(false);
     }
   }
 
-  async function salvarProcessoUnico(p: any) {
+  async function salvarProcessoUnico(p: ProcessoBuscaResult) {
     setSaving(true);
     try {
       const res = await fetch("/api/processos", {
@@ -110,14 +105,13 @@ export default function NovoProcessoPage() {
           classe: p.classe,
           assunto: p.assunto,
           orgaoJulgador: p.orgaoJulgador,
-          notas,
         }),
       });
 
       if (res.ok) {
         router.push("/dashboard/processos");
       }
-    } catch (err) {
+    } catch {
       setError("Erro ao cadastrar processo.");
     } finally {
       setSaving(false);
@@ -169,9 +163,10 @@ export default function NovoProcessoPage() {
       {modoBusca === "cpf" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">CPF ou Nome do Cliente / Empresa *</label>
+            <label htmlFor="cpf-nome" className="block text-xs font-bold text-slate-700 mb-2">CPF ou Nome do Cliente / Empresa *</label>
             <div className="flex gap-2">
               <input
+                id="cpf-nome"
                 type="text"
                 placeholder="Ex: 123.456.789-00 ou João da Silva"
                 className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-900"
@@ -230,9 +225,10 @@ export default function NovoProcessoPage() {
       {modoBusca === "cnj" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-2">Número do Processo CNJ *</label>
+            <label htmlFor="numero-cnj" className="block text-xs font-bold text-slate-700 mb-2">Número do Processo CNJ *</label>
             <div className="flex gap-2">
               <input
+                id="numero-cnj"
                 type="text"
                 placeholder="0000000-00.0000.0.00.0000"
                 className="flex-1 px-4 py-3 rounded-xl border border-slate-200 font-mono text-xs font-bold text-slate-900 focus:outline-none focus:border-slate-900"

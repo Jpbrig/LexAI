@@ -82,18 +82,34 @@ export default function ConfiguracoesPage() {
       setPassError("A nova senha e a confirmação não conferem.");
       return;
     }
-    if (newPassword.length < 6) {
-      setPassError("A nova senha deve ter pelo menos 6 caracteres.");
+    if (newPassword.length < 8) {
+      setPassError("A nova senha deve ter pelo menos 8 caracteres.");
       return;
     }
+
     setPassSaving(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setPassSuccess("Senha alterada com sucesso!");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setPassSaving(false);
-    setTimeout(() => setPassSuccess(""), 4000);
+    try {
+      const res = await fetch("/api/user", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setPassError(data.error || "Não foi possível atualizar a senha.");
+        return;
+      }
+
+      setPassSuccess("Senha alterada com sucesso. Outras sessões foram encerradas.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      setPassError("Erro de conexão ao atualizar a senha.");
+    } finally {
+      setPassSaving(false);
+    }
   }
 
   if (loading) {
@@ -118,14 +134,21 @@ export default function ConfiguracoesPage() {
         <div className="relative flex-shrink-0">
           <div className="w-20 h-20 rounded-full bg-slate-900 text-white font-bold text-2xl flex items-center justify-center overflow-hidden shadow-md border-4 border-slate-100">
             {image ? (
-              <img src={image} alt={name} className="w-full h-full object-cover" />
+              // User avatars can be data URLs or external URLs; next/image cannot safely handle both here.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt={name ? `Foto de perfil de ${name}` : "Foto de perfil"} className="w-full h-full object-cover" />
             ) : (
               <span>{name ? name.substring(0, 2).toUpperCase() : "DR"}</span>
             )}
           </div>
-          <label className="absolute bottom-0 right-0 w-8 h-8 bg-amber-500 hover:bg-amber-600 text-white rounded-full flex items-center justify-center cursor-pointer shadow border-2 border-white transition-transform hover:scale-110">
+          <label
+            htmlFor="profile-image-upload"
+            aria-label="Alterar foto de perfil"
+            className="absolute bottom-0 right-0 w-8 h-8 bg-amber-500 hover:bg-amber-600 text-white rounded-full flex items-center justify-center cursor-pointer shadow border-2 border-white transition-transform hover:scale-110"
+          >
             <Camera className="w-4 h-4" />
             <input
+              id="profile-image-upload"
               type="file"
               accept="image/*"
               className="hidden"
@@ -183,16 +206,16 @@ export default function ConfiguracoesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
-            <label className="label">Nome Completo</label>
-            <input type="text" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+            <label htmlFor="profile-name" className="label">Nome Completo</label>
+            <input id="profile-name" type="text" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div>
-            <label className="label">Email de Notificação</label>
-            <input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <label htmlFor="profile-email" className="label">Email de Notificação</label>
+            <input id="profile-email" type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div>
-            <label className="label">Registro OAB (UF + Número)</label>
-            <input type="text" placeholder="Ex: SP 123456" className="input" value={oab} onChange={(e) => setOab(e.target.value)} />
+            <label htmlFor="profile-oab" className="label">Registro OAB (UF + Número)</label>
+            <input id="profile-oab" type="text" placeholder="Ex: SP 123456" className="input" value={oab} onChange={(e) => setOab(e.target.value)} />
           </div>
         </div>
 
@@ -231,6 +254,7 @@ export default function ConfiguracoesPage() {
               checked={emailAlerts}
               onChange={(e) => setEmailAlerts(e.target.checked)}
               className="w-4 h-4 accent-slate-900 rounded cursor-pointer"
+              aria-label="Receber alertas por e-mail"
             />
           </div>
           <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
@@ -251,6 +275,7 @@ export default function ConfiguracoesPage() {
               checked={whatsappAlerts}
               onChange={(e) => setWhatsappAlerts(e.target.checked)}
               className="w-4 h-4 accent-slate-900 rounded cursor-pointer"
+              aria-label="Receber alertas por WhatsApp"
             />
           </div>
         </div>
@@ -271,98 +296,40 @@ export default function ConfiguracoesPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* ClicSign — Assinatura Eletrônica ICP-Brasil */}
-          <div className="space-y-1.5 sm:col-span-2 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">✍️</span>
-              <label className="label font-bold text-sm text-emerald-900 mb-0">Token API ClicSign — Assinatura ICP-Brasil</label>
+          {/* Os segredos são administrados no servidor; nunca são persistidos no browser. */}
+          <div className="sm:col-span-2 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">🔐</span>
+              <p className="font-bold text-sm text-slate-900">Integrações protegidas</p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-2">
-                <input
-                  type="password"
-                  id="clicsign-api-key"
-                  placeholder="Cole seu Access Token da ClicSign..."
-                  className="input text-xs font-mono"
-                  defaultValue={typeof window !== "undefined" ? localStorage.getItem("clicsign_api_key") || "" : ""}
-                  onChange={(e) => {
-                    if (typeof window !== "undefined") {
-                      localStorage.setItem("clicsign_api_key", e.target.value);
-                    }
-                  }}
-                />
-              </div>
-              <div>
-                <select
-                  className="input text-xs"
-                  defaultValue={typeof window !== "undefined" ? localStorage.getItem("clicsign_env") || "sandbox" : "sandbox"}
-                  onChange={(e) => {
-                    if (typeof window !== "undefined") {
-                      localStorage.setItem("clicsign_env", e.target.value);
-                    }
-                  }}
-                >
-                  <option value="sandbox">Ambiente Sandbox (Testes)</option>
-                  <option value="production">Ambiente Produção</option>
-                </select>
-              </div>
-            </div>
-            <p className="text-[11px] text-emerald-700 mt-1">
-              Gere seu token de acesso no painel ClicSign em Configurações → API. Habilita envios com Selo Digital ICP-Brasil e validade jurídica plena.
+            <p className="text-xs leading-relaxed text-slate-600">
+              As credenciais do ClicSign, Gemini, DataJud e demais provedores são configuradas no servidor pelo administrador. Por segurança, chaves não são aceitas nem armazenadas neste navegador.
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="label font-bold text-xs">Token / Chave API Infosimples</label>
-            <input
-              type="password"
-              placeholder="Cole sua API Key da Infosimples..."
-              className="input text-xs font-mono"
-            />
-            <p className="text-[11px] text-slate-400">Libera consultas diretas de INPI, SINESP e Certidões.</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="label font-bold text-xs">Token DirectData / Bureau de Crédito</label>
-            <input
-              type="password"
-              placeholder="Cole sua chave de acesso DirectData..."
-              className="input text-xs font-mono"
-            />
-            <p className="text-[11px] text-slate-400">Libera pesquisas avançadas de localização de devedores.</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="label font-bold text-xs">Credencial Serpro API Center (PGFN / CADIN)</label>
-            <input
-              type="password"
-              placeholder="Consumer Key / Secret do Serpro..."
-              className="input text-xs font-mono"
-            />
-            <p className="text-[11px] text-slate-400">Consulta oficial de Dívida Ativa da União e Novo CADIN.</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="label font-bold text-xs">Login / Senha Acesso SENATRAN SINESP</label>
-            <input
-              type="text"
-              placeholder="Usuário / Token de Acesso SINESP..."
-              className="input text-xs font-mono"
-            />
-            <p className="text-[11px] text-slate-400">Libera histórico veicular, gravames e restrições em tempo real.</p>
+          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              ["Infosimples", "INPI, SINESP e certidões"],
+              ["DirectData", "Localização e bureau de crédito"],
+              ["Serpro", "PGFN, CADIN e dívida ativa"],
+              ["SENATRAN / SINESP", "Veículos, gravames e CNH"],
+            ].map(([provider, description]) => (
+              <div key={provider} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-slate-900">{provider}</p>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Não configurado</span>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-500">{description}</p>
+                <p className="mt-2 text-[10px] font-medium text-slate-400">Configure no ambiente seguro do servidor.</p>
+              </div>
+            ))}
           </div>
         </div>
 
-
         <div className="flex justify-end pt-2">
-          <button
-            type="button"
-            onClick={() => alert("Credenciais salvas com sucesso no seu perfil!")}
-            className="btn-primary text-xs px-5 py-2.5"
-          >
-            <Save className="w-4 h-4 text-amber-400" />
-            Salvar Chaves de Conexão
-          </button>
+          <p className="text-right text-[11px] text-slate-400">
+            Integrações ficam desabilitadas até o administrador configurar e validar as credenciais do provedor.
+          </p>
         </div>
       </div>
 
@@ -393,8 +360,9 @@ export default function ConfiguracoesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="label">Senha Atual</label>
+            <label htmlFor="current-password" className="label">Senha Atual</label>
             <input
+              id="current-password"
               type="password"
               className="input"
               value={currentPassword}
@@ -403,8 +371,9 @@ export default function ConfiguracoesPage() {
             />
           </div>
           <div>
-            <label className="label">Nova Senha</label>
+            <label htmlFor="new-password" className="label">Nova Senha</label>
             <input
+              id="new-password"
               type="password"
               className="input"
               value={newPassword}
@@ -413,8 +382,9 @@ export default function ConfiguracoesPage() {
             />
           </div>
           <div>
-            <label className="label">Confirmar Nova Senha</label>
+            <label htmlFor="confirm-password" className="label">Confirmar Nova Senha</label>
             <input
+              id="confirm-password"
               type="password"
               className="input"
               value={confirmPassword}

@@ -1,69 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { env } from "@/lib/env";
+
+const requestSchema = z.object({
+  termo: z.string().trim().min(3).max(160),
+});
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    const { termo } = await req.json();
+    if (!(await getAuthContext())) return unauthorizedResponse();
 
-    if (!termo || termo.trim().length < 3) {
+    const parsed = requestSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Informe um CPF, CNPJ ou Nome com pelo menos 3 caracteres." },
-        { status: 400 }
+        { error: "Informe um CPF, CNPJ ou nome válido com pelo menos 3 caracteres." },
+        { status: 400 },
       );
     }
 
-    const termoClean = termo.trim();
-    const isCpf = /^\d{3}\.?\d{3}\.?\d{3}-?\d{2}$/.test(termoClean) || /^\d{11}$/.test(termoClean);
+    if (!env.JUSBRASIL_API_URL || !env.JUSBRASIL_API_KEY) {
+      return NextResponse.json(
+        { error: "A busca por CPF/nome está indisponível até a configuração de um provedor autorizado." },
+        { status: 503 },
+      );
+    }
 
-    // Simula consulta agregada no Jusbrasil / DataJud por CPF ou Nome
-    const resultados = [
-      {
-        numeroCnj: "0012345-67.2023.8.26.0100",
-        tribunal: "TJSP",
-        classe: "Ação de Indenização por Danos Morais",
-        assunto: "Responsabilidade Civil",
-        orgaoJulgador: "14ª Vara Cível — Foro Central SP",
-        parteRequerente: isCpf ? "João da Silva (CPF: " + termoClean + ")" : termoClean,
-        parteRequerida: "Empresa XYZ S/A",
-        dataDistribuicao: "2023-03-12",
-        status: "ATIVO",
-        fonte: "Jusbrasil / DataJud API",
-      },
-      {
-        numeroCnj: "0098765-43.2022.4.03.6100",
-        tribunal: "TRF3",
-        classe: "Mandado de Segurança Cível",
-        assunto: "Direito Tributário / IRPF",
-        orgaoJulgador: "2ª Vara Cível Federal de SP",
-        parteRequerente: isCpf ? "João da Silva (CPF: " + termoClean + ")" : termoClean,
-        parteRequerida: "Delegado da Receita Federal do Brasil",
-        dataDistribuicao: "2022-07-05",
-        status: "ATIVO",
-        fonte: "Jusbrasil / DataJud API",
-      },
-      {
-        numeroCnj: "0001122-33.2024.5.15.0001",
-        tribunal: "TRT15",
-        classe: "Reclamação Trabalhista Rito Sumaríssimo",
-        assunto: "Horas Extras / Verbas Rescisórias",
-        orgaoJulgador: "1ª Vara do Trabalho de Campinas",
-        parteRequerente: isCpf ? "João da Silva (CPF: " + termoClean + ")" : termoClean,
-        parteRequerida: "Logística & Transportes Ltda.",
-        dataDistribuicao: "2024-01-19",
-        status: "ATIVO",
-        fonte: "Jusbrasil / DataJud API",
-      },
-    ];
-
-    return NextResponse.json({
-      termo: termoClean,
-      totalEncontrados: resultados.length,
-      processos: resultados,
-    });
-  } catch (error: any) {
-    console.error("Erro na busca Jusbrasil por CPF/Nome:", error);
     return NextResponse.json(
-      { error: "Erro ao realizar busca no Jusbrasil." },
-      { status: 500 }
+      { error: "O adaptador Jusbrasil ainda precisa ser habilitado com o contrato e o formato oficial do provedor." },
+      { status: 503 },
     );
+  } catch (error) {
+    console.error("Erro na busca processual por CPF/nome:", error);
+    return NextResponse.json({ error: "Erro ao realizar a busca processual." }, { status: 500 });
   }
 }

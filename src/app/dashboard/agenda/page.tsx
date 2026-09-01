@@ -3,48 +3,54 @@
 import { useState, useEffect } from "react";
 import {
   Calendar as CalendarIcon,
-  Clock,
   CheckCircle2,
   Plus,
   Calculator,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
-
-type EventoAgenda = {
-  id: string;
-  titulo: string;
-  tipo: "Prazo Processual" | "Audiência" | "Reunião" | "Perícia";
-  data: string; // YYYY-MM-DD
-  hora: string;
-  processo: string;
-  cliente: string;
-  status: "Pendente" | "Concluído";
-  prioridade: "Alta" | "Média" | "Baixa";
-};
+import type { EventoAgenda } from "@/lib/types";
 
 export default function AgendaPage() {
   const [eventos, setEventos] = useState<EventoAgenda[]>([]);
   const [loading, setLoading] = useState(true);
 
+  async function buscarEventos() {
+    try {
+      const response = await fetch("/api/agenda");
+      const data = (await response.json()) as unknown;
+      setEventos(Array.isArray(data) ? (data as EventoAgenda[]) : []);
+    } catch (error) {
+      console.error("Erro ao carregar agenda:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function carregarEventos() {
     setLoading(true);
-    fetch("/api/agenda")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setEventos(data);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Erro ao carregar agenda:", err);
-        setLoading(false);
-      });
+    void buscarEventos();
   }
 
   useEffect(() => {
-    carregarEventos();
+    const controller = new AbortController();
+
+    async function carregarEventosInicialmente() {
+      try {
+        const response = await fetch("/api/agenda", { signal: controller.signal });
+        const data = (await response.json()) as unknown;
+        if (Array.isArray(data)) setEventos(data as EventoAgenda[]);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("Erro ao carregar agenda:", error);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void carregarEventosInicialmente();
+    return () => controller.abort();
   }, []);
 
   // Modo de visualização principal: "lista" | "dia" | "mes" | "ano"
@@ -217,10 +223,16 @@ export default function AgendaPage() {
       </div>
 
       {/* Seletor de Modo de Visualização (Dia, Mês, Ano, Lista) */}
+      {loading ? (
+        <div className="card flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
+          <Loader2 className="w-5 h-5 animate-spin text-amber-500" aria-label="Carregando agenda" />
+          Carregando agenda...
+        </div>
+      ) : (
       <div className="card p-4 space-y-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2">
-            <button onClick={() => navegar(-1)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50">
+            <button type="button" onClick={() => navegar(-1)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50" aria-label="Período anterior">
               <ChevronLeft className="w-4 h-4 text-slate-600" />
             </button>
             <h2 className="font-bold text-slate-900 text-lg min-w-[180px] text-center">
@@ -229,7 +241,7 @@ export default function AgendaPage() {
               {modoView === "ano" && `Ano de ${anoAtual}`}
               {modoView === "lista" && "Todos os Prazos"}
             </h2>
-            <button onClick={() => navegar(1)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50">
+            <button type="button" onClick={() => navegar(1)} className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50" aria-label="Próximo período">
               <ChevronRight className="w-4 h-4 text-slate-600" />
             </button>
           </div>
@@ -327,13 +339,15 @@ export default function AgendaPage() {
                 const eventosDoDia = eventos.filter((e) => e.data === dataFormatada);
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={dia}
                     onClick={() => {
                       setDataAtual(new Date(anoAtual, mesAtual, dia));
                       setModoView("dia");
                     }}
-                    className="h-24 p-1.5 bg-white rounded-lg border border-slate-200 hover:border-amber-400 hover:shadow-sm cursor-pointer transition-all flex flex-col justify-between"
+                    aria-label={`Abrir compromissos do dia ${dia}`}
+                    className="h-24 p-1.5 bg-white rounded-lg border border-slate-200 hover:border-amber-400 hover:shadow-sm cursor-pointer transition-all flex flex-col justify-between text-left"
                   >
                     <span className="font-bold text-xs text-slate-700">{dia}</span>
                     <div className="space-y-1 overflow-y-auto">
@@ -352,7 +366,7 @@ export default function AgendaPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -369,13 +383,15 @@ export default function AgendaPage() {
               }).length;
 
               return (
-                <div
+                <button
+                  type="button"
                   key={m}
                   onClick={() => {
                     setDataAtual(new Date(anoAtual, idxMes, 1));
                     setModoView("mes");
                   }}
-                  className="card p-4 hover:border-amber-400 hover:shadow-md cursor-pointer transition-all space-y-2 bg-white"
+                  aria-label={`Abrir calendário de ${m} de ${anoAtual}`}
+                  className="card w-full p-4 hover:border-amber-400 hover:shadow-md cursor-pointer transition-all space-y-2 bg-white text-left"
                 >
                   <h3 className="font-bold text-sm text-slate-900">{m}</h3>
                   <div className="flex items-center justify-between text-xs">
@@ -386,7 +402,7 @@ export default function AgendaPage() {
                       {countEventosMes} Prazos
                     </span>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -450,6 +466,7 @@ export default function AgendaPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Modal Calculadora de Prazos em Dias Úteis */}
       {showCalcDiasUteis && (
@@ -460,26 +477,26 @@ export default function AgendaPage() {
                 <Calculator className="w-5 h-5 text-amber-500" />
                 Calculadora de Prazos em Dias Úteis
               </h2>
-              <button onClick={() => setShowCalcDiasUteis(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button type="button" onClick={() => setShowCalcDiasUteis(false)} className="text-slate-400 hover:text-slate-600" aria-label="Fechar calculadora de prazos">✕</button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="label">Legislação / Regra</label>
-                <select className="input" value={calcRegra} onChange={(e) => setCalcRegra(e.target.value as "cpc" | "clt")}>
+                <label htmlFor="calc-regra" className="label">Legislação / Regra</label>
+                <select id="calc-regra" className="input" value={calcRegra} onChange={(e) => setCalcRegra(e.target.value as "cpc" | "clt")}>
                   <option value="cpc">CPC (Art. 219 — Dias Úteis)</option>
                   <option value="clt">CLT (Art. 775 — Dias Úteis Trabalhistas)</option>
                 </select>
               </div>
 
               <div>
-                <label className="label">Data de Publicação / Intimação</label>
-                <input type="date" className="input" value={calcDataInicio} onChange={(e) => setCalcDataInicio(e.target.value)} />
+                <label htmlFor="calc-data-inicio" className="label">Data de Publicação / Intimação</label>
+                <input id="calc-data-inicio" type="date" className="input" value={calcDataInicio} onChange={(e) => setCalcDataInicio(e.target.value)} />
               </div>
 
               <div>
-                <label className="label">Quantidade de Dias de Prazo</label>
-                <input type="number" className="input" placeholder="Ex: 15" value={calcDias} onChange={(e) => setCalcDias(e.target.value)} />
+                <label htmlFor="calc-dias" className="label">Quantidade de Dias de Prazo</label>
+                <input id="calc-dias" type="number" className="input" placeholder="Ex: 15" value={calcDias} onChange={(e) => setCalcDias(e.target.value)} />
               </div>
 
               <button onClick={calcularPrazoDiasUteis} className="btn-primary w-full justify-center py-2.5 text-xs">
@@ -515,12 +532,12 @@ export default function AgendaPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <label className="label">Título do Compromisso / Prazo</label>
-                <input type="text" className="input" placeholder="Ex: Contestação, Audiência de Conciliação..." value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
+                <label htmlFor="agenda-titulo" className="label">Título do Compromisso / Prazo</label>
+                <input id="agenda-titulo" type="text" className="input" placeholder="Ex: Contestação, Audiência de Conciliação..." value={titulo} onChange={(e) => setTitulo(e.target.value)} required />
               </div>
               <div>
-                <label className="label">Tipo</label>
-                <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value as EventoAgenda["tipo"])}>
+                <label htmlFor="agenda-tipo" className="label">Tipo</label>
+                <select id="agenda-tipo" className="input" value={tipo} onChange={(e) => setTipo(e.target.value as EventoAgenda["tipo"])}>
                   <option value="Prazo Processual">Prazo Processual</option>
                   <option value="Audiência">Audiência</option>
                   <option value="Reunião">Reunião</option>
@@ -528,28 +545,28 @@ export default function AgendaPage() {
                 </select>
               </div>
               <div>
-                <label className="label">Prioridade</label>
-                <select className="input" value={prioridade} onChange={(e) => setPrioridade(e.target.value as EventoAgenda["prioridade"])}>
+                <label htmlFor="agenda-prioridade" className="label">Prioridade</label>
+                <select id="agenda-prioridade" className="input" value={prioridade} onChange={(e) => setPrioridade(e.target.value as EventoAgenda["prioridade"])}>
                   <option value="Alta">🔴 Alta (Crítico)</option>
                   <option value="Média">🟡 Média</option>
                   <option value="Baixa">🟢 Baixa</option>
                 </select>
               </div>
               <div>
-                <label className="label">Data de Vencimento</label>
-                <input type="date" className="input" value={data} onChange={(e) => setData(e.target.value)} required />
+                <label htmlFor="agenda-data" className="label">Data de Vencimento</label>
+                <input id="agenda-data" type="date" className="input" value={data} onChange={(e) => setData(e.target.value)} required />
               </div>
               <div>
-                <label className="label">Horário Limite</label>
-                <input type="time" className="input" value={hora} onChange={(e) => setHora(e.target.value)} />
+                <label htmlFor="agenda-hora" className="label">Horário Limite</label>
+                <input id="agenda-hora" type="time" className="input" value={hora} onChange={(e) => setHora(e.target.value)} />
               </div>
               <div>
-                <label className="label">Número do Processo (opcional)</label>
-                <input type="text" className="input" placeholder="Ex: 0012345-67..." value={processo} onChange={(e) => setProcesso(e.target.value)} />
+                <label htmlFor="agenda-processo" className="label">Número do Processo (opcional)</label>
+                <input id="agenda-processo" type="text" className="input" placeholder="Ex: 0012345-67..." value={processo} onChange={(e) => setProcesso(e.target.value)} />
               </div>
               <div>
-                <label className="label">Nome do Cliente</label>
-                <input type="text" className="input" placeholder="Ex: Carlos Silva..." value={cliente} onChange={(e) => setCliente(e.target.value)} />
+                <label htmlFor="agenda-cliente" className="label">Nome do Cliente</label>
+                <input id="agenda-cliente" type="text" className="input" placeholder="Ex: Carlos Silva..." value={cliente} onChange={(e) => setCliente(e.target.value)} />
               </div>
             </div>
 

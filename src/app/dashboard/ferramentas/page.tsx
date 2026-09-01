@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Calculator,
@@ -27,19 +27,42 @@ import {
   CheckCircle2,
   AlertCircle,
   Info,
-  HelpCircle,
 } from "lucide-react";
+import type { GovQueryResponse } from "@/lib/types";
+
+type FerramentaTab =
+  | "calculadoras"
+  | "consultas"
+  | "outros"
+  | "procuracao"
+  | "peticoes"
+  | "assistente"
+  | "assinatura"
+  | "jurisprudencia"
+  | "financeiro"
+  | "vademecum";
+
+const ferramentaTabs: FerramentaTab[] = [
+  "calculadoras",
+  "consultas",
+  "outros",
+  "procuracao",
+  "peticoes",
+  "assistente",
+  "assinatura",
+  "jurisprudencia",
+  "financeiro",
+  "vademecum",
+];
+
+function isFerramentaTab(value: string | null): value is FerramentaTab {
+  return value !== null && ferramentaTabs.some((tab) => tab === value);
+}
 
 function FerramentasContent() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as "calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | "jurisprudencia" | "financeiro" | "vademecum" | null;
-  const [activeTab, setActiveTab] = useState<"calculadoras" | "consultas" | "outros" | "procuracao" | "peticoes" | "assistente" | "assinatura" | "jurisprudencia" | "financeiro" | "vademecum">("calculadoras");
-
-  useEffect(() => {
-    if (tabParam) {
-      setActiveTab(tabParam);
-    }
-  }, [tabParam]);
+  const tabParam = searchParams.get("tab");
+  const activeTab: FerramentaTab = isFerramentaTab(tabParam) ? tabParam : "calculadoras";
   const [selectedCalc, setSelectedCalc] = useState<string>("trabalhista");
   const [selectedConsulta, setSelectedConsulta] = useState<string>("buscador");
 
@@ -80,7 +103,6 @@ function FerramentasContent() {
     setLoadingProcuracao(true);
     setErroProcuracao("");
     setTextoProcuracao("");
-    const geminiKey = typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : "";
     try {
       const res = await fetch("/api/peticoes/gerar", {
         method: "POST",
@@ -94,7 +116,6 @@ function FerramentasContent() {
           fatos: `Outorgante: ${outorganteNome}, ${outorganteEstadoCivil}, ${outorganteProfissao || "brasileiro(a)"}, CPF ${outorganteCpf}, RG ${outorganteRg}, residente em ${outorganteEndereco}${outorganteCidade ? ", " + outorganteCidade : ""}. Outorgado: ${outorgadoAdvogado}, OAB ${outorgadoOab}. Tipo: ${tipoProcuracao}. Objeto: ${procObjeto || "poderes gerais para o foro."}`,
           pedidos: procObjeto,
           valorCausa: "",
-          geminiKey,
         }),
       });
       const data = await res.json();
@@ -123,9 +144,9 @@ function FerramentasContent() {
   }
 
   // Governamental API state
-  const [loadingGov, setLoadingGov] = useState<boolean>(false);
-  const [resultadoGov, setResultadoGov] = useState<any>(null);
-  const [errorGov, setErrorGov] = useState<string>("");
+  const [loadingGov, setLoadingGov] = useState(false);
+  const [resultadoGov, setResultadoGov] = useState<GovQueryResponse | null>(null);
+  const [errorGov, setErrorGov] = useState("");
 
   // I.A. Assistente Jurídico state
   type ChatMsg = { role: "user" | "assistant"; text: string };
@@ -138,58 +159,29 @@ function FerramentasContent() {
   async function enviarMensagem() {
     const texto = chatInput.trim();
     if (!texto || loadingChat) return;
-    const geminiKey = typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : "";
 
     const novaMensagem: ChatMsg = { role: "user", text: texto };
     setChatMessages((prev) => [...prev, novaMensagem]);
     setChatInput("");
     setLoadingChat(true);
 
-    const systemPrompt = `REGRAS RÍGIDAS DE SEGURANÇA E ANTI-ALUCINAÇÃO:
-1. NUNCA invente leis, artigos, súmulas, números de processos, decisões ou jurisprudências que não existam.
-2. Fundamente suas respostas estritamente com base na legislação oficial brasileira vigente (Planalto/Gov.br), STF, STJ, TST, TJs e fontes jurídicas consolidadas como o Jusbrasil (jusbrasil.com.br).
-3. Se você não tiver 100% de certeza ou se uma informação exigir consulta atualizada a um banco de dados específico, declare explicitamente: "Recomendo consultar a fonte oficial em jusbrasil.com.br ou no portal do Planalto/Tribunal competente para confirmação".
-4. NUNCA simule citações jurisprudenciais fictícias.
-
-Você é um assistente jurídico especializado em Direito Brasileiro.
-Suas áreas de expertise incluem: Direito Civil, Direito do Trabalho (CLT), Direito Penal, Direito Processual Civil e Penal, Direito do Consumidor (CDC), Direito Tributário, Direito Previdenciário (INSS), Direito de Família e Sucessões, Direito Empresarial e Contratos.
-Forneça respostas precisas citando artigos de lei oficiais, súmulas (STF/STJ/TST) e jurisprudência verificável.
-Responda em português do Brasil com linguagem técnica, precisa e clara.
-Alerte sempre que a questão exigir análise de caso específico com um advogado.
-
-Histórico da conversa:
-${chatMessages.map((m) => `${m.role === "user" ? "Usuário" : "Assistente"}: ${m.text}`).join("\n")}
-Usuário: ${texto}`;
-
-    if (!geminiKey) {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          text: "⚠️ **Chave Gemini não configurada.** Acesse [Configurações](/dashboard/configuracoes) → Conectores & Credenciais e adicione sua Google Gemini API Key (gratuita em aistudio.google.com/app/apikey) para usar o assistente.",
-        },
-      ]);
-      setLoadingChat(false);
-      return;
-    }
-
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: systemPrompt }] }],
-            generationConfig: { temperature: 0.4, maxOutputTokens: 2048 },
-          }),
-        }
-      );
-      const data = await res.json();
-      const resposta = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Não foi possível obter uma resposta. Tente novamente.";
-      setChatMessages((prev) => [...prev, { role: "assistant", text: resposta }]);
+      const res = await fetch("/api/ai/assistente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: chatMessages,
+          text: texto,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.resposta) {
+        setChatMessages((prev) => [...prev, { role: "assistant", text: data.resposta }]);
+      } else {
+        setChatMessages((prev) => [...prev, { role: "assistant", text: data.error || "O assistente está indisponível." }]);
+      }
     } catch {
-      setChatMessages((prev) => [...prev, { role: "assistant", text: "Erro de conexão. Verifique sua chave Gemini nas Configurações." }]);
+      setChatMessages((prev) => [...prev, { role: "assistant", text: "Erro de conexão com o assistente." }]);
     } finally {
       setLoadingChat(false);
     }
@@ -218,9 +210,6 @@ Usuário: ${texto}`;
     setErroClicsign("");
     setSucessoClicsign("");
 
-    const clicsignKey = typeof window !== "undefined" ? localStorage.getItem("clicsign_api_key") || "" : "";
-    const environment = typeof window !== "undefined" ? localStorage.getItem("clicsign_env") || "sandbox" : "sandbox";
-
     try {
       const res = await fetch("/api/assinaturas/clicsign/enviar", {
         method: "POST",
@@ -232,8 +221,6 @@ Usuário: ${texto}`;
           nomeDocumento: sigNomeDocumento || "Contrato_LexAI",
           conteudoDocumento: sigConteudoDocumento,
           metodoAutenticacao: sigMetodoAutenticacao,
-          clicsignKey,
-          environment
         })
       });
 
@@ -297,8 +284,6 @@ Usuário: ${texto}`;
     setErroJur("");
     setJurResultados([]);
 
-    const geminiKey = typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : "";
-
     try {
       const res = await fetch("/api/jurisprudencia/buscar", {
         method: "POST",
@@ -306,7 +291,6 @@ Usuário: ${texto}`;
         body: JSON.stringify({
           termo: jurTermo,
           tribunal: jurTribunal,
-          geminiKey
         })
       });
 
@@ -378,8 +362,6 @@ Usuário: ${texto}`;
     setLoadingPeticao(true);
     setErroPeticao("");
     setTextoPeticao("");
-    // Lê chave Gemini do localStorage (salva nas Configurações)
-    const geminiKey = typeof window !== "undefined" ? localStorage.getItem("gemini_api_key") || "" : "";
     try {
       const res = await fetch("/api/peticoes/gerar", {
         method: "POST",
@@ -393,7 +375,6 @@ Usuário: ${texto}`;
           fatos: pFatos,
           pedidos: pPedidos,
           valorCausa: pValorCausa,
-          geminiKey,
         }),
       });
       const data = await res.json();
@@ -941,6 +922,7 @@ Usuário: ${texto}`;
                         <input
                           type="number"
                           placeholder="0,00"
+                          aria-label="Último salário bruto em reais"
                           className="flex-1 px-3 py-2 text-sm font-semibold outline-none bg-white"
                           value={salario}
                           onChange={(e) => setSalario(e.target.value)}
@@ -953,6 +935,7 @@ Usuário: ${texto}`;
                         type="number"
                         min="1"
                         max="12"
+                        aria-label="Meses trabalhados no ano"
                         className="input"
                         value={mesesTrabalhados}
                         onChange={(e) => setMesesTrabalhados(Number(e.target.value))}
@@ -964,6 +947,7 @@ Usuário: ${texto}`;
                         className="input"
                         value={tipoDemissao}
                         onChange={(e) => setTipoDemissao(e.target.value)}
+                        aria-label="Tipo de rescisão trabalhista"
                       >
                         <option value="sem_justa_causa">Sem Justa Causa (Multa 40%)</option>
                         <option value="com_justa_causa">Com Justa Causa</option>
@@ -1054,6 +1038,7 @@ Usuário: ${texto}`;
                         <input
                           type="number"
                           placeholder="0,00"
+                          aria-label={calculosLista.find((c) => c.id === selectedCalc)?.labelValor || "Valor base em reais"}
                           className="flex-1 px-3 py-2 text-sm font-semibold outline-none bg-white"
                           value={valorBase}
                           onChange={(e) => setValorBase(e.target.value)}
@@ -1068,6 +1053,7 @@ Usuário: ${texto}`;
                         type="number"
                         step="0.01"
                         placeholder="Digite o percentual..."
+                        aria-label={calculosLista.find((c) => c.id === selectedCalc)?.labelTaxa || "Taxa ou índice percentual"}
                         className="input font-semibold"
                         value={taxaJuros}
                         onChange={(e) => setTaxaJuros(e.target.value)}
@@ -1080,6 +1066,7 @@ Usuário: ${texto}`;
                       <input
                         type="number"
                         placeholder="Digite a quantidade..."
+                        aria-label={calculosLista.find((c) => c.id === selectedCalc)?.labelMeses || "Período do cálculo"}
                         className="input font-semibold"
                         value={meses}
                         onChange={(e) => setMeses(e.target.value)}
@@ -1092,7 +1079,7 @@ Usuário: ${texto}`;
                     <div className="pt-4 border-t border-slate-100 space-y-3">
                       <div>
                         <label className="label font-bold text-slate-800">Índice de Correção Monetária Oficial</label>
-                        <select className="input font-semibold" value={debitoIndice} onChange={(e) => setDebitoIndice(e.target.value)}>
+                        <select className="input font-semibold" value={debitoIndice} onChange={(e) => setDebitoIndice(e.target.value)} aria-label="Índice oficial de correção monetária">
                           <option value="tjsp">Tabela Prática TJSP (Débitos em Geral)</option>
                           <option value="inpc">INPC - IBGE (Família &amp; Trabalhista)</option>
                           <option value="ipca">IPCA-E - IBGE (Débitos Cíveis &amp; Públicos)</option>
@@ -1251,6 +1238,7 @@ Usuário: ${texto}`;
               <input
                 type="text"
                 placeholder={consultasLista.find((c) => c.id === selectedConsulta)?.placeholder || "Digite o termo..."}
+                aria-label={`Identificador da consulta: ${consultasLista.find((c) => c.id === selectedConsulta)?.inputType || "termo"}`}
                 className="input flex-1"
                 value={consultaTermo}
                 onChange={(e) => setConsultaTermo(e.target.value)}
@@ -1378,19 +1366,19 @@ Usuário: ${texto}`;
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="label">Nome do Outorgante (Cliente)</label>
-                <input type="text" className="input" placeholder="Nome completo..." value={outorganteNome} onChange={(e) => setOutorganteNome(e.target.value)} />
+                <input type="text" className="input" placeholder="Nome completo..." aria-label="Nome do outorgante ou cliente" value={outorganteNome} onChange={(e) => setOutorganteNome(e.target.value)} />
               </div>
               <div>
                 <label className="label">CPF do Outorgante</label>
-                <input type="text" className="input" placeholder="000.000.000-00" value={outorganteCpf} onChange={(e) => setOutorganteCpf(e.target.value)} />
+                <input type="text" className="input" placeholder="000.000.000-00" aria-label="CPF do outorgante" value={outorganteCpf} onChange={(e) => setOutorganteCpf(e.target.value)} />
               </div>
               <div>
                 <label className="label">RG / Documento de Identidade</label>
-                <input type="text" className="input" placeholder="00.000.000-0 SSP/SP" value={outorganteRg} onChange={(e) => setOutorganteRg(e.target.value)} />
+                <input type="text" className="input" placeholder="00.000.000-0 SSP/SP" aria-label="RG ou documento de identidade do outorgante" value={outorganteRg} onChange={(e) => setOutorganteRg(e.target.value)} />
               </div>
               <div>
                 <label className="label">Estado Civil</label>
-                <select className="input" value={outorganteEstadoCivil} onChange={(e) => setOutorganteEstadoCivil(e.target.value)}>
+                <select className="input" value={outorganteEstadoCivil} onChange={(e) => setOutorganteEstadoCivil(e.target.value)} aria-label="Estado civil do outorgante">
                   <option value="solteiro(a)">Solteiro(a)</option>
                   <option value="casado(a)">Casado(a)</option>
                   <option value="divorciado(a)">Divorciado(a)</option>
@@ -1400,15 +1388,15 @@ Usuário: ${texto}`;
               </div>
               <div>
                 <label className="label">Profissão</label>
-                <input type="text" className="input" placeholder="Ex: Empresário, Advogado..." value={outorganteProfissao} onChange={(e) => setOutorganteProfissao(e.target.value)} />
+                <input type="text" className="input" placeholder="Ex: Empresário, Advogado..." aria-label="Profissão do outorgante" value={outorganteProfissao} onChange={(e) => setOutorganteProfissao(e.target.value)} />
               </div>
               <div>
                 <label className="label">Cidade / UF de Residência</label>
-                <input type="text" className="input" placeholder="Ex: São Paulo/SP" value={outorganteCidade} onChange={(e) => setOutorganteCidade(e.target.value)} />
+                <input type="text" className="input" placeholder="Ex: São Paulo/SP" aria-label="Cidade e UF de residência do outorgante" value={outorganteCidade} onChange={(e) => setOutorganteCidade(e.target.value)} />
               </div>
               <div className="sm:col-span-2">
                 <label className="label">Endereço Completo</label>
-                <input type="text" className="input" placeholder="Rua, número, bairro, CEP..." value={outorganteEndereco} onChange={(e) => setOutorganteEndereco(e.target.value)} />
+                <input type="text" className="input" placeholder="Rua, número, bairro, CEP..." aria-label="Endereço completo do outorgante" value={outorganteEndereco} onChange={(e) => setOutorganteEndereco(e.target.value)} />
               </div>
               <div>
                 <label className="label">Arquivo Modelo Base (opcional)</label>
@@ -1428,15 +1416,15 @@ Usuário: ${texto}`;
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="label">Nome do Advogado</label>
-                  <input type="text" className="input" placeholder="Dr(a). Nome Completo..." value={outorgadoAdvogado} onChange={(e) => setOutorgadoAdvogado(e.target.value)} />
+                  <input type="text" className="input" placeholder="Dr(a). Nome Completo..." aria-label="Nome do advogado outorgado" value={outorgadoAdvogado} onChange={(e) => setOutorgadoAdvogado(e.target.value)} />
                 </div>
                 <div>
                   <label className="label">Número OAB</label>
-                  <input type="text" className="input" placeholder="SP 123.456" value={outorgadoOab} onChange={(e) => setOutorgadoOab(e.target.value)} />
+                  <input type="text" className="input" placeholder="SP 123.456" aria-label="Número da OAB do advogado outorgado" value={outorgadoOab} onChange={(e) => setOutorgadoOab(e.target.value)} />
                 </div>
                 <div>
                   <label className="label">Objeto / Finalidade da Procuração</label>
-                  <input type="text" className="input" placeholder="Ex: Representar em ação de cobrança..." value={procObjeto} onChange={(e) => setProcObjeto(e.target.value)} />
+                  <input type="text" className="input" placeholder="Ex: Representar em ação de cobrança..." aria-label="Objeto ou finalidade da procuração" value={procObjeto} onChange={(e) => setProcObjeto(e.target.value)} />
                 </div>
               </div>
             </div>
@@ -1607,23 +1595,23 @@ Usuário: ${texto}`;
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="label">Nome Completo do Cliente</label>
-                <input type="text" className="input" placeholder="Ex: Carlos Eduardo Silva..." value={sigNomeSignatario} onChange={(e) => setSigNomeSignatario(e.target.value)} />
+                <input type="text" className="input" placeholder="Ex: Carlos Eduardo Silva..." aria-label="Nome completo do cliente signatário" value={sigNomeSignatario} onChange={(e) => setSigNomeSignatario(e.target.value)} />
               </div>
               <div>
                 <label className="label">E-mail para Envio da Assinatura</label>
-                <input type="email" className="input" placeholder="carlos@email.com..." value={sigEmailSignatario} onChange={(e) => setSigEmailSignatario(e.target.value)} />
+                <input type="email" className="input" placeholder="carlos@email.com..." aria-label="E-mail do cliente signatário" value={sigEmailSignatario} onChange={(e) => setSigEmailSignatario(e.target.value)} />
               </div>
               <div>
                 <label className="label">CPF do Signatário</label>
-                <input type="text" className="input" placeholder="000.000.000-00..." value={sigCpfSignatario} onChange={(e) => setSigCpfSignatario(e.target.value)} />
+                <input type="text" className="input" placeholder="000.000.000-00..." aria-label="CPF do cliente signatário" value={sigCpfSignatario} onChange={(e) => setSigCpfSignatario(e.target.value)} />
               </div>
               <div>
                 <label className="label">Nome do Documento</label>
-                <input type="text" className="input" placeholder="Ex: Contrato_Honorarios_2026..." value={sigNomeDocumento} onChange={(e) => setSigNomeDocumento(e.target.value)} />
+                <input type="text" className="input" placeholder="Ex: Contrato_Honorarios_2026..." aria-label="Nome do documento para assinatura" value={sigNomeDocumento} onChange={(e) => setSigNomeDocumento(e.target.value)} />
               </div>
               <div>
                 <label className="label">Nível de Autenticação / Selo</label>
-                <select className="input" value={sigMetodoAutenticacao} onChange={(e) => setSigMetodoAutenticacao(e.target.value)}>
+                <select className="input" value={sigMetodoAutenticacao} onChange={(e) => setSigMetodoAutenticacao(e.target.value)} aria-label="Nível de autenticação da assinatura">
                   <option value="icp_brasil">🔐 Selo ICP-Brasil (Certificado A1/A3 - Validade Máxima)</option>
                   <option value="email">✉️ Token por E-mail (Assinatura Eletrônica Avançada)</option>
                 </select>
@@ -1646,6 +1634,7 @@ Usuário: ${texto}`;
                 rows={6}
                 className="input resize-y font-sans text-sm"
                 placeholder="Cole ou digite aqui o texto completo do contrato, procuração ou acordo..."
+                aria-label="Conteúdo do documento a assinar"
                 value={sigConteudoDocumento}
                 onChange={(e) => setSigConteudoDocumento(e.target.value)}
               />
@@ -1654,6 +1643,7 @@ Usuário: ${texto}`;
 
           {/* Botão de Disparo */}
           <button
+            type="button"
             onClick={enviarAssinaturaClicSign}
             disabled={loadingClicsign || !sigNomeSignatario || !sigEmailSignatario || !sigCpfSignatario || !sigConteudoDocumento}
             className="btn-primary bg-emerald-600 hover:bg-emerald-700 w-full justify-center py-4 text-base disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
@@ -1801,6 +1791,7 @@ Usuário: ${texto}`;
                 type="text"
                 className="input flex-1 text-sm font-medium"
                 placeholder="Ex: Extravio de bagagem dano moral, justa causa embriaguez TST, juros abusivos financiamento STJ..."
+                aria-label="Termo para pesquisar jurisprudência"
                 value={jurTermo}
                 onChange={(e) => setJurTermo(e.target.value)}
                 onKeyDown={(e) => {
@@ -2056,7 +2047,7 @@ Usuário: ${texto}`;
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               <div>
                 <label className="label">Tipo</label>
-                <select className="input" value={finTipo} onChange={(e) => setFinTipo(e.target.value as "receita" | "despesa")}>
+                <select className="input" value={finTipo} onChange={(e) => setFinTipo(e.target.value as "receita" | "despesa")} aria-label="Tipo do lançamento financeiro">
                   <option value="receita">🟢 Receita (Entrada)</option>
                   <option value="despesa">🔴 Despesa (Saída)</option>
                 </select>
@@ -2064,17 +2055,28 @@ Usuário: ${texto}`;
 
               <div className="lg:col-span-2">
                 <label className="label">Descrição do Lançamento</label>
-                <input type="text" className="input" placeholder="Ex: Honorários Iniciais, Custas..." value={finDescricao} onChange={(e) => setFinDescricao(e.target.value)} />
+                <input type="text" className="input" placeholder="Ex: Honorários Iniciais, Custas..." aria-label="Descrição do lançamento financeiro" value={finDescricao} onChange={(e) => setFinDescricao(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="label">Categoria</label>
+                <select className="input" value={finCategoria} onChange={(e) => setFinCategoria(e.target.value)} aria-label="Categoria do lançamento financeiro">
+                  <option>Honorários Pró-Labore</option>
+                  <option>Sucumbência</option>
+                  <option>Custas</option>
+                  <option>Acordo</option>
+                  <option>Operacional</option>
+                </select>
               </div>
 
               <div>
                 <label className="label">Cliente / Processo</label>
-                <input type="text" className="input" placeholder="Nome do cliente..." value={finCliente} onChange={(e) => setFinCliente(e.target.value)} />
+                <input type="text" className="input" placeholder="Nome do cliente..." aria-label="Cliente ou processo do lançamento financeiro" value={finCliente} onChange={(e) => setFinCliente(e.target.value)} />
               </div>
 
               <div>
                 <label className="label">Valor (R$)</label>
-                <input type="number" step="0.01" className="input" placeholder="0,00" value={finValor} onChange={(e) => setFinValor(e.target.value)} />
+                <input type="number" step="0.01" className="input" placeholder="0,00" aria-label="Valor do lançamento financeiro em reais" value={finValor} onChange={(e) => setFinValor(e.target.value)} />
               </div>
             </div>
 
@@ -2219,6 +2221,7 @@ Usuário: ${texto}`;
                   rows={2}
                   className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm resize-none outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300 transition-all"
                   placeholder="Faça uma pergunta jurídica... (Enter para enviar, Shift+Enter para nova linha)"
+                  aria-label="Pergunta para o assistente jurídico"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -2229,8 +2232,10 @@ Usuário: ${texto}`;
                   }}
                 />
                 <button
+                  type="button"
                   onClick={enviarMensagem}
                   disabled={loadingChat || !chatInput.trim()}
+                  aria-label="Enviar pergunta ao assistente jurídico"
                   className="btn-primary px-5 py-3 self-end disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loadingChat
@@ -2305,25 +2310,25 @@ Usuário: ${texto}`;
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="label">Requerente / Autor</label>
-                <input type="text" className="input" placeholder="Nome completo ou Razão Social..." value={pRequerente} onChange={(e) => setPRequerente(e.target.value)} />
+                <input type="text" className="input" placeholder="Nome completo ou Razão Social..." aria-label="Requerente ou autor da causa" value={pRequerente} onChange={(e) => setPRequerente(e.target.value)} />
               </div>
               <div>
                 <label className="label">Requerido / Réu</label>
-                <input type="text" className="input" placeholder="Nome completo ou Razão Social..." value={pRequerido} onChange={(e) => setPRequerido(e.target.value)} />
+                <input type="text" className="input" placeholder="Nome completo ou Razão Social..." aria-label="Requerido ou réu da causa" value={pRequerido} onChange={(e) => setPRequerido(e.target.value)} />
               </div>
               <div>
                 <label className="label">Juízo / Vara</label>
-                <input type="text" className="input" placeholder="Ex: 3ª Vara Cível de São Paulo/SP" value={pJuizo} onChange={(e) => setPJuizo(e.target.value)} />
+                <input type="text" className="input" placeholder="Ex: 3ª Vara Cível de São Paulo/SP" aria-label="Juízo ou vara" value={pJuizo} onChange={(e) => setPJuizo(e.target.value)} />
               </div>
               <div>
                 <label className="label">Nº do Processo (se existente)</label>
-                <input type="text" className="input" placeholder="Ex: 1002345-12.2024.8.26.0100" value={pNumeroProcesso} onChange={(e) => setPNumeroProcesso(e.target.value)} />
+                <input type="text" className="input" placeholder="Ex: 1002345-12.2024.8.26.0100" aria-label="Número do processo existente" value={pNumeroProcesso} onChange={(e) => setPNumeroProcesso(e.target.value)} />
               </div>
               <div>
                 <label className="label">Valor da Causa (R$)</label>
                 <div className="flex items-center border border-slate-200 rounded-lg bg-white overflow-hidden focus-within:ring-2 focus-within:ring-slate-300">
                   <span className="px-3 text-slate-400 text-sm font-bold bg-slate-50 border-r border-slate-200 select-none" style={{height:'40px', display:'flex', alignItems:'center'}}>R$</span>
-                  <input type="number" placeholder="0,00" className="flex-1 px-3 py-2 text-sm font-semibold outline-none bg-white" value={pValorCausa} onChange={(e) => setPValorCausa(e.target.value)} />
+                  <input type="number" placeholder="0,00" aria-label="Valor da causa em reais" className="flex-1 px-3 py-2 text-sm font-semibold outline-none bg-white" value={pValorCausa} onChange={(e) => setPValorCausa(e.target.value)} />
                 </div>
               </div>
               <div>
@@ -2344,6 +2349,7 @@ Usuário: ${texto}`;
                 rows={5}
                 className="input resize-y font-sans text-sm"
                 placeholder="Descreva os fatos relevantes ao caso: o que aconteceu, quando, como, consequências sofridas pelo autor..."
+                aria-label="Narração dos fatos da causa"
                 value={pFatos}
                 onChange={(e) => setPFatos(e.target.value)}
               />
@@ -2354,6 +2360,7 @@ Usuário: ${texto}`;
                 rows={3}
                 className="input resize-y font-sans text-sm"
                 placeholder="Liste os pedidos: Ex: a) condenação ao pagamento de R$ X; b) declaração de nulidade do contrato; c) indenização por danos morais..."
+                aria-label="Pedidos ou objeto da demanda"
                 value={pPedidos}
                 onChange={(e) => setPPedidos(e.target.value)}
               />

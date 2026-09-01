@@ -7,66 +7,95 @@ import {
   FileText,
   Bell,
   TrendingUp,
-  AlertCircle,
   Plus,
-  ArrowRight,
-  Clock,
-  CheckCircle,
   Activity,
-  Gavel,
-  Loader2,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RecentMovements } from "@/components/dashboard/recent-movements";
+import type { DashboardResponse } from "@/lib/types";
 
-function formatDate(dateStr: string) {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 24) return `há ${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `há ${days} dia${days > 1 ? "s" : ""}`;
-}
 
-function getTipoBadgeClass(tipo: string) {
-  const map: Record<string, string> = {
-    Sentença: "badge-destructive",
-    Acórdão: "badge-primary",
-    Despacho: "badge-warning",
-    Audiência: "badge-success",
-  };
-  return map[tipo] || "badge-primary";
+function DashboardLoadingState() {
+  return (
+    <div
+      className="space-y-8 animate-fade-in"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <span className="sr-only" role="status">
+        Carregando dashboard...
+      </span>
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-64" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <Skeleton className="h-11 w-full rounded-xl sm:w-44" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div key={index} className="card space-y-3">
+            <Skeleton className="h-10 w-10 rounded-xl" />
+            <Skeleton className="h-9 w-20" />
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <RecentMovements movimentacoes={[]} isLoading />
+        <div className="space-y-4">
+          <div className="card space-y-4">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-2 w-full rounded-full" />
+            <Skeleton className="h-3 w-48" />
+          </div>
+          <div className="card space-y-3">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardResponse | null>(null);
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((res) => res.json())
-      .then((resData) => {
-        setData(resData);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Erro ao carregar dashboard:", err);
-        setLoading(false);
-      });
+    const controller = new AbortController();
+
+    async function carregarDashboard() {
+      try {
+        const response = await fetch("/api/dashboard", { signal: controller.signal });
+        const responseData = (await response.json()) as DashboardResponse;
+        setData(responseData);
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("Erro ao carregar dashboard:", error);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void carregarDashboard();
+    return () => controller.abort();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <DashboardLoadingState />;
 
   const statsList = [
     { label: "Total de Processos", value: data?.stats?.totalProcessos ?? 0, icon: FileText, color: "bg-blue-500", change: "Banco Supabase" },
     { label: "Movimentações Hoje", value: data?.stats?.movimentacoesHoje ?? 0, icon: Activity, color: "bg-amber-500", change: "Em tempo real" },
     { label: "Alertas Ativos", value: data?.stats?.totalAlertas ?? 0, icon: Bell, color: "bg-green-500", change: "Monitorados" },
-    { label: "Resumos com IA", value: data?.recentMovimentacoes?.filter((m: any) => m.resumoIa).length ?? 0, icon: TrendingUp, color: "bg-purple-500", change: "Gerados pela IA" },
+    { label: "Resumos com IA", value: data?.recentMovimentacoes?.filter((m) => m.resumoIa).length ?? 0, icon: TrendingUp, color: "bg-purple-500", change: "Gerados pela IA" },
   ];
 
   return (
@@ -110,61 +139,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Movements — 2/3 width */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="lg:col-span-2 card"
-        >
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-semibold text-foreground text-lg">Movimentações Recentes</h2>
-            <Link href="/dashboard/processos" className="text-sm text-primary hover:underline flex items-center gap-1">
-              Ver todas <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-
-          <div className="space-y-3">
-            {(!data?.recentMovimentacoes || data.recentMovimentacoes.length === 0) ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma movimentação registrada no banco.</p>
-            ) : (
-              data.recentMovimentacoes.slice(0, 5).map((mov: any) => (
-                <Link
-                  key={mov.id}
-                  href={`/dashboard/processos/${mov.processoId}`}
-                  className="block p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/2 transition-all duration-150 group"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className={`badge ${getTipoBadgeClass(mov.tipo)}`}>
-                          <Gavel className="w-2.5 h-2.5" />
-                          {mov.tipo}
-                        </span>
-                        {mov.urgente && (
-                          <span className="badge badge-destructive">
-                            <AlertCircle className="w-2.5 h-2.5" />
-                            Urgente
-                          </span>
-                        )}
-                        <span className="badge badge-primary text-xs">{mov.tribunal}</span>
-                      </div>
-                      <p className="text-xs font-mono text-muted-foreground mb-1.5">{mov.processo}</p>
-                      <p className="text-sm text-foreground line-clamp-2 leading-relaxed">{mov.descricao}</p>
-                    </div>
-                    <div className="flex-shrink-0 flex flex-col items-end gap-2">
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(mov.data)}
-                      </span>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        </motion.div>
+        <RecentMovements
+          movimentacoes={data?.recentMovimentacoes ?? []}
+          isLoading={loading}
+        />
 
         {/* Side column — 1/3 width */}
         <div className="space-y-4">

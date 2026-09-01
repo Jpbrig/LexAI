@@ -3,6 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
 import {
   Scale,
   LayoutDashboard,
@@ -55,6 +56,7 @@ function DashboardLayoutContent({
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const { data: session } = useSession();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -84,9 +86,12 @@ function DashboardLayoutContent({
 
             {/* Toggle Collapse Button */}
             <button
+              type="button"
               onClick={() => setCollapsed(!collapsed)}
               className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
               title={collapsed ? "Expandir Menu" : "Recolher Menu"}
+              aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+              aria-expanded={!collapsed}
             >
               {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
@@ -209,20 +214,25 @@ function DashboardLayoutContent({
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-slate-900 truncate">Dr. Usuário</p>
-                <p className="text-[11px] text-slate-400 truncate">Perfil &amp; Configurações</p>
+                <p className="text-xs font-bold text-slate-900 truncate">
+                  {session?.user?.name || "Seu perfil"}
+                </p>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {session?.user?.email || "Perfil & configurações"}
+                </p>
               </div>
             )}
           </Link>
 
-          <Link
-            href="/auth/signin"
-            className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
+          <button
+            type="button"
+            onClick={() => signOut({ redirectTo: "/auth/signin" })}
+            className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left"
             title={collapsed ? "Sair" : undefined}
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
             {!collapsed && <span>Sair da Conta</span>}
-          </Link>
+          </button>
         </div>
       </aside>
 

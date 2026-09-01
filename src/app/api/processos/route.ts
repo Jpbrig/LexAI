@@ -1,43 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { seedDatabase } from "@/lib/seed";
+import { canMutate } from "@/lib/authorization";
+import { getAuthContext, forbiddenResponse, unauthorizedResponse } from "@/lib/auth-guard";
+import { processoSchema } from "@/lib/validation";
 
-// Helper: extrai userId do cookie de sessão
-function getUserIdFromRequest(req: NextRequest): string | null {
-  const sessionUserId =
-    req.cookies.get("lexai_session")?.value ||
-    req.cookies.get("next-auth.session-token")?.value ||
-    req.cookies.get("__Secure-next-auth.session-token")?.value;
+export const dynamic = "force-dynamic";
 
-  if (!sessionUserId || sessionUserId === "authenticated") return null;
-  return sessionUserId;
-}
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    await seedDatabase();
-
-    // ✅ Segurança: usar ID da sessão, não e-mail hardcoded
-    const userId = getUserIdFromRequest(req);
-    let user;
-
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
-    }
-
-    // Fallback para conta de demo durante desenvolvimento
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { email: "teste@lexai.com.br" },
-      });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
 
     const processos = await prisma.processo.findMany({
-      where: { userId: user.id },
+      where: { workspaceId: context.workspaceId },
       include: {
         movimentacoes: {
           orderBy: { data: "desc" },
@@ -48,49 +23,30 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(processos);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro na API de processos:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao listar processos" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao listar processos." }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { numeroCnj, tribunal, classe, assunto, orgaoJulgador, notas } = await req.json();
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
+    if (!canMutate(context)) return forbiddenResponse();
 
-    if (!numeroCnj || !tribunal) {
-      return NextResponse.json(
-        { error: "Número CNJ e Tribunal são obrigatórios" },
-        { status: 400 }
-      );
+    const parsed = processoSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dados do processo inválidos." }, { status: 400 });
     }
 
-    // ✅ Segurança: usar ID da sessão, não e-mail hardcoded
-    const userId = getUserIdFromRequest(req);
-    let user;
-
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
-    }
-
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { email: "teste@lexai.com.br" },
-      });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
-
+    const { numeroCnj, tribunal, classe, assunto, orgaoJulgador, notas } = parsed.data;
     const processo = await prisma.processo.create({
       data: {
-        userId: user.id,
+        userId: context.userId,
+        workspaceId: context.workspaceId,
         numeroCnj,
-        tribunal,
+        tribunal: tribunal.toUpperCase(),
         classe: classe || "Ação Cível",
         assunto: assunto || "Direito Geral",
         orgaoJulgador: orgaoJulgador || "Vara Única",
@@ -105,26 +61,29 @@ export async function POST(req: NextRequest) {
             resumoIa: "🏛️ PROCESSO CADASTRADO: Processo registrado no LexAI. Acompanhamento automático ativado.",
           },
         },
-        alertas: {
-          create: {
-            userId: user.id,
-            tipo: "QUALQUER_MOVIMENTACAO",
-            canal: "EMAIL",
-            ativo: true,
-          },
-        },
       },
-      include: {
-        movimentacoes: true,
+      include: { movimentacoes: true },
+    });
+
+    await prisma.alerta.create({
+      data: {
+        userId: context.userId,
+        workspaceId: context.workspaceId,
+        processoId: processo.id,
+        tipo: "QUALQUER_MOVIMENTACAO",
+        canal: "EMAIL",
+        ativo: true,
       },
     });
 
     return NextResponse.json(processo, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorCode = error && typeof error === "object" && "code" in error ? error.code : null;
+    if (errorCode === "P2002") {
+      return NextResponse.json({ error: "Este processo já está cadastrado neste workspace." }, { status: 409 });
+    }
+
     console.error("Erro ao salvar processo:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro ao salvar processo no banco" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao salvar processo." }, { status: 500 });
   }
 }

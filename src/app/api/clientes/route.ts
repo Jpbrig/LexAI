@@ -1,92 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { seedDatabase } from "@/lib/seed";
+import { canMutate } from "@/lib/authorization";
+import { getAuthContext, forbiddenResponse, unauthorizedResponse } from "@/lib/auth-guard";
+import { clienteSchema } from "@/lib/validation";
 
-function getUserIdFromRequest(req: NextRequest): string | null {
-  const sessionUserId =
-    req.cookies.get("lexai_session")?.value ||
-    req.cookies.get("next-auth.session-token")?.value ||
-    req.cookies.get("__Secure-next-auth.session-token")?.value;
+export const dynamic = "force-dynamic";
 
-  if (!sessionUserId || sessionUserId === "authenticated") return null;
-  return sessionUserId;
-}
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    await seedDatabase();
-    const userId = getUserIdFromRequest(req);
-    let user;
-
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
-    }
-
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { email: "teste@lexai.com.br" },
-      });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
 
     const clientes = await prisma.cliente.findMany({
-      where: { userId: user.id },
+      where: { workspaceId: context.workspaceId },
       orderBy: { createdAt: "desc" },
+      include: {
+        processos: {
+          where: { workspaceId: context.workspaceId },
+          select: { id: true },
+        },
+      },
     });
 
-    return NextResponse.json(clientes);
-  } catch (error: any) {
+    return NextResponse.json(
+      clientes.map((cliente) => ({
+        ...cliente,
+        processosCount: cliente.processos.length,
+      })),
+    );
+  } catch (error) {
     console.error("Erro ao buscar clientes:", error);
-    return NextResponse.json({ error: "Erro ao buscar clientes" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar clientes." }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    await seedDatabase();
-    const userId = getUserIdFromRequest(req);
-    let user;
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
+    if (!canMutate(context)) return forbiddenResponse();
 
-    if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
+    const parsed = clienteSchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Dados do cliente inválidos." }, { status: 400 });
     }
 
-    if (!user) {
-      user = await prisma.user.findFirst({
-        where: { email: "teste@lexai.com.br" },
-      });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-    }
-
-    const body = await req.json();
-    const { nome, tipo, documento, email, telefone, cidade, observacoes } = body;
-
-    if (!nome || !documento) {
-      return NextResponse.json({ error: "Nome e documento são obrigatórios" }, { status: 400 });
-    }
-
-    const novoCliente = await prisma.cliente.create({
+    const cliente = await prisma.cliente.create({
       data: {
-        userId: user.id,
-        nome,
-        tipo: tipo || "PF",
-        documento,
-        email: email || "",
-        telefone: telefone || "",
-        cidade: cidade || "São Paulo",
-        observacoes: observacoes || "",
+        userId: context.userId,
+        workspaceId: context.workspaceId,
+        ...parsed.data,
+        cidade: parsed.data.cidade || "Não informada",
       },
     });
 
-    return NextResponse.json(novoCliente, { status: 201 });
-  } catch (error: any) {
+    return NextResponse.json(cliente, { status: 201 });
+  } catch (error) {
     console.error("Erro ao criar cliente:", error);
-    return NextResponse.json({ error: "Erro ao criar cliente" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao criar cliente." }, { status: 500 });
   }
 }

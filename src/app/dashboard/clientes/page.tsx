@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Search, Plus, Mail, Phone, MapPin, FileText, DollarSign, Calendar, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Users, Search, Plus, Mail, Phone, MapPin, FileText, Calendar, ChevronRight, Loader2 } from "lucide-react";
+import { isRecord, numberValue } from "@/lib/types";
+import type { ClienteApiItem } from "@/lib/types";
 
 type ProcessoVinculado = {
   numeroCnj: string;
@@ -29,39 +31,92 @@ export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
 
+  async function buscarClientes() {
+    try {
+      const response = await fetch("/api/clientes");
+      const data = (await response.json()) as unknown;
+      if (Array.isArray(data)) {
+        const formatados = data.filter(isClienteApiItem).map((cliente): Cliente => ({
+          id: cliente.id,
+          nome: cliente.nome,
+          tipo: cliente.tipo === "PJ" ? "PJ" : "PF",
+          documento: cliente.documento,
+          email: cliente.email,
+          telefone: cliente.telefone,
+          cidade: cliente.cidade,
+          processosCount: cliente.processosCount ?? cliente.processos?.length ?? 0,
+          listaProcessos: [],
+          totalPago: numberValue(cliente.totalPago),
+          status: cliente.status === "Inativo" ? "Inativo" : "Ativo",
+          dataCadastro: cliente.createdAt
+            ? new Date(cliente.createdAt).toLocaleDateString("pt-BR")
+            : "Não informado",
+          observacoes: cliente.observacoes ?? "",
+        }));
+        setClientes(formatados);
+      } else {
+        setClientes([]);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar clientes:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function isClienteApiItem(value: unknown): value is ClienteApiItem {
+    return (
+      isRecord(value) &&
+      typeof value.id === "string" &&
+      typeof value.nome === "string" &&
+      typeof value.documento === "string"
+    );
+  }
+
   function carregarClientes() {
     setLoading(true);
-    fetch("/api/clientes")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          const formatados = data.map((c: any) => ({
-            id: c.id,
-            nome: c.nome,
-            tipo: c.tipo as "PF" | "PJ",
-            documento: c.documento,
-            email: c.email,
-            telefone: c.telefone,
-            cidade: c.cidade,
-            processosCount: 0,
-            listaProcessos: [],
-            totalPago: c.totalPago || 0,
-            status: c.status as "Ativo" | "Inativo",
-            dataCadastro: new Date(c.createdAt).toLocaleDateString("pt-BR"),
-            observacoes: c.observacoes || "",
-          }));
-          setClientes(formatados);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Erro ao buscar clientes:", err);
-        setLoading(false);
-      });
+    void buscarClientes();
   }
 
   useEffect(() => {
-    carregarClientes();
+    const controller = new AbortController();
+
+    async function carregarClientesInicialmente() {
+      try {
+        const response = await fetch("/api/clientes", { signal: controller.signal });
+        const data = (await response.json()) as unknown;
+        if (Array.isArray(data)) {
+          const formatados = data.filter(isClienteApiItem).map((cliente): Cliente => ({
+            id: cliente.id,
+            nome: cliente.nome,
+            tipo: cliente.tipo === "PJ" ? "PJ" : "PF",
+            documento: cliente.documento,
+            email: cliente.email,
+            telefone: cliente.telefone,
+            cidade: cliente.cidade,
+            processosCount: cliente.processosCount ?? cliente.processos?.length ?? 0,
+            listaProcessos: [],
+            totalPago: numberValue(cliente.totalPago),
+            status: cliente.status === "Inativo" ? "Inativo" : "Ativo",
+            dataCadastro: cliente.createdAt
+              ? new Date(cliente.createdAt).toLocaleDateString("pt-BR")
+              : "Não informado",
+            observacoes: cliente.observacoes ?? "",
+          }));
+          setClientes(formatados);
+        } else {
+          setClientes([]);
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        console.error("Erro ao buscar clientes:", error);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void carregarClientesInicialmente();
+    return () => controller.abort();
   }, []);
 
   const [busca, setBusca] = useState("");
@@ -152,7 +207,7 @@ export default function ClientesPage() {
           <p className="text-2xl font-black text-blue-700 mt-1">
             {clientes.reduce((acc, c) => acc + c.processosCount, 0)} Ações Vinculadas
           </p>
-          <p className="text-[11px] text-slate-500 mt-1">Média de {(clientes.reduce((acc, c) => acc + c.processosCount, 0) / clientes.length).toFixed(1)} processos/cliente</p>
+          <p className="text-[11px] text-slate-500 mt-1">Média de {clientes.length > 0 ? (clientes.reduce((acc, c) => acc + c.processosCount, 0) / clientes.length).toFixed(1) : "0.0"} processos/cliente</p>
         </div>
       </div>
 
@@ -165,6 +220,7 @@ export default function ClientesPage() {
             className="input text-sm"
             style={{ paddingLeft: "2.75rem" }}
             placeholder="Buscar cliente por nome, CPF/CNPJ ou e-mail..."
+            aria-label="Buscar clientes por nome, CPF/CNPJ ou e-mail"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
@@ -172,12 +228,19 @@ export default function ClientesPage() {
       </div>
 
       {/* Grid de Cards de Clientes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {clientesFiltrados.map((cli) => (
-          <div
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 text-slate-900 animate-spin" aria-label="Carregando clientes" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {clientesFiltrados.map((cli) => (
+          <button
+            type="button"
             key={cli.id}
             onClick={() => setSelectedCliente(cli)}
-            className="card hover:border-amber-400 hover:shadow-md transition-all cursor-pointer space-y-3 relative group"
+            aria-label={`Abrir ficha de ${cli.nome}`}
+            className="card w-full text-left hover:border-amber-400 hover:shadow-md transition-all cursor-pointer space-y-3 relative group"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -218,9 +281,10 @@ export default function ClientesPage() {
                 R$ {cli.totalPago.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          </button>
+          ))}
+        </div>
+      )}
 
       {/* Modal / Drawer de Detalhes do Cliente */}
       {selectedCliente && (
@@ -229,6 +293,9 @@ export default function ClientesPage() {
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex justify-end cursor-pointer"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="client-details-title"
             onClick={(e) => e.stopPropagation()}
             className="bg-white w-full max-w-lg h-full p-6 overflow-y-auto space-y-6 shadow-2xl animate-fade-in cursor-default"
           >
@@ -239,12 +306,14 @@ export default function ClientesPage() {
                 }`}>
                   {selectedCliente.tipo === "PJ" ? "PESSOA JURÍDICA" : "PESSOA FÍSICA"}
                 </span>
-                <h2 className="font-bold text-slate-900 text-xl mt-1">{selectedCliente.nome}</h2>
+                <h2 id="client-details-title" className="font-bold text-slate-900 text-xl mt-1">{selectedCliente.nome}</h2>
                 <p className="text-xs text-slate-500 font-mono">{selectedCliente.documento}</p>
               </div>
               <button
+                type="button"
                 onClick={() => setSelectedCliente(null)}
                 className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200"
+                aria-label="Fechar ficha do cliente"
               >
                 ✕
               </button>
@@ -350,46 +419,52 @@ export default function ClientesPage() {
       {/* Modal Cadastro de Novo Cliente */}
       {showModalNovo && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form onSubmit={handleSalvarCliente} className="card max-w-lg w-full space-y-4 shadow-2xl animate-fade-in">
+          <form
+            onSubmit={handleSalvarCliente}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-client-title"
+            className="card max-w-lg w-full space-y-4 shadow-2xl animate-fade-in"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h2 className="font-bold text-slate-900 text-lg flex items-center gap-2">
+              <h2 id="new-client-title" className="font-bold text-slate-900 text-lg flex items-center gap-2">
                 <Users className="w-5 h-5 text-amber-500" />
                 Cadastrar Novo Cliente
               </h2>
-              <button type="button" onClick={() => setShowModalNovo(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+              <button type="button" onClick={() => setShowModalNovo(false)} className="text-slate-400 hover:text-slate-600" aria-label="Fechar cadastro de cliente">✕</button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <label className="label">Nome Completo / Razão Social</label>
-                <input type="text" className="input" placeholder="Digite o nome..." value={nome} onChange={(e) => setNome(e.target.value)} required />
+                <label htmlFor="client-name" className="label">Nome Completo / Razão Social</label>
+                <input id="client-name" type="text" className="input" placeholder="Digite o nome..." value={nome} onChange={(e) => setNome(e.target.value)} required />
               </div>
               <div>
-                <label className="label">Tipo de Pessoa</label>
-                <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value as "PF" | "PJ")}>
+                <label htmlFor="client-type" className="label">Tipo de Pessoa</label>
+                <select id="client-type" className="input" value={tipo} onChange={(e) => setTipo(e.target.value as "PF" | "PJ")}>
                   <option value="PF">Pessoa Física (PF)</option>
                   <option value="PJ">Pessoa Jurídica (PJ)</option>
                 </select>
               </div>
               <div>
-                <label className="label">{tipo === "PJ" ? "CNPJ" : "CPF"}</label>
-                <input type="text" className="input" placeholder={tipo === "PJ" ? "00.000.000/0001-00" : "000.000.000-00"} value={documento} onChange={(e) => setDocumento(e.target.value)} required />
+                <label htmlFor="client-document" className="label">{tipo === "PJ" ? "CNPJ" : "CPF"}</label>
+                <input id="client-document" type="text" className="input" placeholder={tipo === "PJ" ? "00.000.000/0001-00" : "000.000.000-00"} value={documento} onChange={(e) => setDocumento(e.target.value)} required />
               </div>
               <div>
-                <label className="label">E-mail</label>
-                <input type="email" className="input" placeholder="cliente@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <label htmlFor="client-email" className="label">E-mail</label>
+                <input id="client-email" type="email" className="input" placeholder="cliente@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div>
-                <label className="label">Telefone / WhatsApp</label>
-                <input type="text" className="input" placeholder="(11) 99999-9999" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+                <label htmlFor="client-phone" className="label">Telefone / WhatsApp</label>
+                <input id="client-phone" type="text" className="input" placeholder="(11) 99999-9999" value={telefone} onChange={(e) => setTelefone(e.target.value)} />
               </div>
               <div className="sm:col-span-2">
-                <label className="label">Cidade / UF</label>
-                <input type="text" className="input" placeholder="Ex: São Paulo / SP" value={cidade} onChange={(e) => setCidade(e.target.value)} />
+                <label htmlFor="client-city" className="label">Cidade / UF</label>
+                <input id="client-city" type="text" className="input" placeholder="Ex: São Paulo / SP" value={cidade} onChange={(e) => setCidade(e.target.value)} />
               </div>
               <div className="sm:col-span-2">
-                <label className="label">Anotações / Histórico Inicial</label>
-                <textarea rows={3} className="input text-xs" placeholder="Observações sobre o cliente ou caso..." value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
+                <label htmlFor="client-notes" className="label">Anotações / Histórico Inicial</label>
+                <textarea id="client-notes" rows={3} className="input text-xs" placeholder="Observações sobre o cliente ou caso..." value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
               </div>
             </div>
 

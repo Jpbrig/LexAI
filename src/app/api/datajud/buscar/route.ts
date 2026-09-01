@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { requireServerSecret } from "@/lib/env";
 
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
 
-// Mapa de tribunais para endpoints do DataJud
 const tribunalEndpoints: Record<string, string> = {
   TJSP: "tjsp",
   TJRJ: "tjrj",
@@ -30,91 +31,118 @@ const tribunalEndpoints: Record<string, string> = {
   TST: "tst",
 };
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
-    const { numeroCnj, tribunal } = await req.json();
+    const authContext = await getAuthContext();
+    if (!authContext) return unauthorizedResponse();
 
-    if (!numeroCnj) {
-      return NextResponse.json({ error: "Número CNJ é obrigatório" }, { status: 400 });
-    }
-
-    // Detecta tribunal automaticamente pelo número CNJ se não informado
-    const tribunalCode = tribunal || detectarTribunal(numeroCnj);
-    const endpoint = tribunalEndpoints[tribunalCode?.toUpperCase()];
-
-    if (!endpoint) {
+    const apiKey = requireServerSecret("DATAJUD_API_KEY");
+    if (!apiKey) {
       return NextResponse.json(
-        { error: `Tribunal '${tribunalCode}' não suportado ou não encontrado` },
-        { status: 400 }
+        { error: "A integração DataJud está temporariamente indisponível." },
+        { status: 503 },
       );
     }
 
-    // Busca na API pública do DataJud
-    const response = await fetch(`${DATAJUD_BASE}/api_publica_${endpoint}/_search`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `ApiKey cDZHYzlZa0JadVREZDJCendFbGFDa3M6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==`,
-      },
-      body: JSON.stringify({
-        query: {
-          match: {
-            numeroProcesso: numeroCnj.replace(/[^0-9]/g, ""),
-          },
+    const body = await req.json();
+    const numeroCnj = typeof body.numeroCnj === "string" ? body.numeroCnj.trim() : "";
+    const tribunalInformado = typeof body.tribunal === "string" ? body.tribunal.trim() : "";
+
+    if (!numeroCnj) {
+      return NextResponse.json({ error: "Número CNJ é obrigatório." }, { status: 400 });
+    }
+
+    const tribunalCode = (tribunalInformado || detectarTribunal(numeroCnj)).toUpperCase();
+    const endpoint = tribunalEndpoints[tribunalCode];
+    if (!endpoint) {
+      return NextResponse.json(
+        { error: `Tribunal '${tribunalCode}' não suportado ou não encontrado.` },
+        { status: 400 },
+      );
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    let response: Response;
+
+    try {
+      response = await fetch(`${DATAJUD_BASE}/api_publica_${endpoint}/_search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `ApiKey ${apiKey}`,
         },
-        size: 1,
-      }),
-    });
+        body: JSON.stringify({
+          query: {
+            match: {
+              numeroProcesso: numeroCnj.replace(/[^0-9]/g, ""),
+            },
+          },
+          size: 1,
+        }),
+        signal: controller.signal,
+        cache: "no-store",
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
-      throw new Error(`DataJud retornou status ${response.status}`);
+      console.error("DataJud respondeu com erro", { status: response.status, tribunal: tribunalCode });
+      return NextResponse.json(
+        { error: "Não foi possível consultar o DataJud neste momento." },
+        { status: response.status >= 500 ? 502 : response.status },
+      );
     }
 
     const data = await response.json();
     const hits = data?.hits?.hits;
-
-    if (!hits || hits.length === 0) {
-      return NextResponse.json(
-        { error: "Processo não encontrado no DataJud" },
-        { status: 404 }
-      );
+    if (!Array.isArray(hits) || hits.length === 0) {
+      return NextResponse.json({ error: "Processo não encontrado no DataJud." }, { status: 404 });
     }
 
-    const processo = hits[0]._source;
+    const processo = hits[0]?._source;
+    if (!processo) {
+      return NextResponse.json({ error: "Resposta inválida do DataJud." }, { status: 502 });
+    }
 
     return NextResponse.json({
       numeroCnj: processo.numeroProcesso,
-      tribunal: tribunalCode.toUpperCase(),
+      tribunal: tribunalCode,
       classe: processo.classe?.nome || "Não informado",
       assunto: processo.assuntos?.[0]?.nome || "Não informado",
       orgaoJulgador: processo.orgaoJulgador?.nome || "Não informado",
       dataDistribuicao: processo.dataHoraUltimaAtualizacao || null,
-      movimentacoes: (processo.movimentos || []).slice(0, 20).map((mov: any) => ({
-        data: mov.dataHora,
-        tipo: mov.nome,
-        descricao: mov.complementosTabelados?.[0]?.descricao || mov.nome,
-        complemento: mov.complemento || null,
-      })),
+      movimentacoes: Array.isArray(processo.movimentos)
+        ? processo.movimentos.slice(0, 20).map((mov: Record<string, unknown>) => ({
+            data: mov.dataHora,
+            tipo: mov.nome,
+            descricao:
+              (mov.complementosTabelados as Array<{ descricao?: string }> | undefined)?.[0]?.descricao || mov.nome,
+            complemento: mov.complemento || null,
+          }))
+        : [],
     });
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      return NextResponse.json({ error: "A consulta DataJud expirou. Tente novamente." }, { status: 504 });
+    }
+
     console.error("Erro ao buscar no DataJud:", error);
-    return NextResponse.json(
-      { error: error.message || "Erro interno ao consultar o DataJud" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro interno ao consultar o DataJud." }, { status: 500 });
   }
 }
 
 function detectarTribunal(numeroCnj: string): string {
-  // Formato CNJ: NNNNNNN-DD.AAAA.J.TT.OOOO
-  // Posição J.TT: tipo de justiça e tribunal
   const nums = numeroCnj.replace(/\D/g, "");
   if (nums.length < 17) return "";
-  const justica = nums[13]; // J = tipo de justiça
-  const tribunal = nums.slice(14, 16); // TT = código do tribunal
+
+  const justica = nums[13];
+  const tribunal = nums.slice(14, 16);
 
   if (justica === "8") {
-    // Justiça Estadual
     const estaduais: Record<string, string> = {
       "26": "TJSP",
       "19": "TJRJ",
@@ -127,10 +155,10 @@ function detectarTribunal(numeroCnj: string): string {
       "07": "TJCE",
       "09": "TJGO",
     };
-    return estaduais[tribunal] || "TJSP";
+    return estaduais[tribunal] || "";
   }
   if (justica === "4") return `TRF${tribunal.replace(/^0/, "")}`;
   if (justica === "5") return `TRT${tribunal.replace(/^0/, "")}`;
   if (justica === "3") return "TRE";
-  return "TJSP";
+  return "";
 }

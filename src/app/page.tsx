@@ -4,26 +4,15 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import {
   Scale,
-  Bell,
-  Zap,
   Shield,
-  ChevronRight,
   Search,
   FileText,
   Brain,
-  TrendingUp,
   Check,
-  Star,
   ArrowRight,
-  Gavel,
   Clock,
-  Calculator,
   UserCheck,
   Sparkles,
-  Lock,
-  Bot,
-  Database,
-  Layers,
 } from "lucide-react";
 
 const features = [

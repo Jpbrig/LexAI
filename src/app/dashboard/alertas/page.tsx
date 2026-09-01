@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Bell,
   Plus,
-  Trash2,
   CheckCircle,
   Clock,
   Gavel,
@@ -16,6 +15,7 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import type { AlertaItem, ProcessoListItem } from "@/lib/types";
 
 const tipoLabel: Record<string, { label: string; icon: React.ElementType }> = {
   QUALQUER_MOVIMENTACAO: { label: "Qualquer movimentação", icon: Bell },
@@ -30,20 +30,9 @@ const canalLabel: Record<string, { label: string; icon: React.ElementType }> = {
   WHATSAPP: { label: "WhatsApp", icon: MessageSquare },
 };
 
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return "Nunca disparado";
-  return new Date(dateStr).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export default function AlertasPage() {
-  const [alertas, setAlertas] = useState<any[]>([]);
-  const [processos, setProcessos] = useState<any[]>([]);
+  const [alertas, setAlertas] = useState<AlertaItem[]>([]);
+  const [processos, setProcessos] = useState<ProcessoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
@@ -59,12 +48,12 @@ export default function AlertasPage() {
       fetch("/api/processos").then((res) => res.json()),
     ])
       .then(([alertasData, processosData]) => {
-        setAlertas(Array.isArray(alertasData) ? alertasData : []);
-        setProcessos(Array.isArray(processosData) ? processosData : []);
+        setAlertas(Array.isArray(alertasData) ? (alertasData as AlertaItem[]) : []);
+        setProcessos(Array.isArray(processosData) ? (processosData as ProcessoListItem[]) : []);
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("Erro ao carregar alertas:", err);
+      .catch((error) => {
+        console.error("Erro ao carregar alertas:", error);
         setLoading(false);
       });
   }, []);
@@ -79,8 +68,8 @@ export default function AlertasPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ativo: !estadoAtual }),
       });
-    } catch (err) {
-      console.error("Erro ao salvar toggle de alerta:", err);
+    } catch (error) {
+      console.error("Erro ao salvar toggle de alerta:", error);
     }
   }
 
@@ -106,8 +95,8 @@ export default function AlertasPage() {
         setShowModal(false);
         setSelectedProcesso("");
       }
-    } catch (err) {
-      console.error("Erro ao criar alerta:", err);
+    } catch (error) {
+      console.error("Erro ao criar alerta:", error);
     } finally {
       setModalSaving(false);
     }
@@ -126,6 +115,7 @@ export default function AlertasPage() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => setShowModal(true)}
           className="bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow flex items-center gap-2 transition-all active:scale-95"
         >
@@ -167,8 +157,9 @@ export default function AlertasPage() {
             <div className="bg-white rounded-2xl p-16 text-center border border-slate-200 shadow-sm">
               <BellOff className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p className="font-bold text-slate-900">Nenhum alerta configurado</p>
-              <p className="text-slate-500 text-xs mt-1">Clique em "Novo Alerta" para ser notificado de alterações em seus processos.</p>
+              <p className="text-slate-500 text-xs mt-1">Clique em &quot;Novo Alerta&quot; para ser notificado de alterações em seus processos.</p>
               <button
+                type="button"
                 onClick={() => setShowModal(true)}
                 className="mt-4 bg-slate-900 text-white font-semibold text-xs px-4 py-2 rounded-xl"
               >
@@ -218,9 +209,11 @@ export default function AlertasPage() {
 
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
+                        type="button"
                         onClick={() => toggleAlerta(alerta.id, alerta.ativo)}
                         className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${alerta.ativo ? "bg-emerald-500" : "bg-slate-300"}`}
                         title={alerta.ativo ? "Pausar alerta" : "Ativar alerta"}
+                        aria-label={alerta.ativo ? "Pausar alerta" : "Ativar alerta"}
                       >
                         <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-200 ${alerta.ativo ? "translate-x-5" : "translate-x-0"}`} />
                       </button>
@@ -238,19 +231,24 @@ export default function AlertasPage() {
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="new-alert-title"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-5"
             >
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <h3 id="new-alert-title" className="font-bold text-slate-900 text-base flex items-center gap-2">
                   <Bell className="w-5 h-5 text-amber-500" />
                   Criar Novo Alerta
                 </h3>
                 <button
+                  type="button"
                   onClick={() => setShowModal(false)}
                   className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"
+                  aria-label="Fechar modal"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -258,8 +256,9 @@ export default function AlertasPage() {
 
               <form onSubmit={handleCriarAlerta} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Selecione o Processo</label>
+                  <label htmlFor="alert-process" className="block text-xs font-semibold text-slate-700 mb-1">Selecione o Processo</label>
                   <select
+                    id="alert-process"
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-900"
                     value={selectedProcesso}
                     onChange={(e) => setSelectedProcesso(e.target.value)}
@@ -275,8 +274,9 @@ export default function AlertasPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tipo de Evento</label>
+                  <label htmlFor="alert-type" className="block text-xs font-semibold text-slate-700 mb-1">Tipo de Evento</label>
                   <select
+                    id="alert-type"
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-900"
                     value={selectedTipo}
                     onChange={(e) => setSelectedTipo(e.target.value)}
@@ -289,8 +289,9 @@ export default function AlertasPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Canal de Notificação</label>
+                  <label htmlFor="alert-channel" className="block text-xs font-semibold text-slate-700 mb-1">Canal de Notificação</label>
                   <select
+                    id="alert-channel"
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-900"
                     value={selectedCanal}
                     onChange={(e) => setSelectedCanal(e.target.value)}

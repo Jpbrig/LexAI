@@ -1,32 +1,78 @@
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
+const DEMO_EMAIL = "teste@lexai.com.br";
+
 export async function seedDatabase() {
-  const existingUser = await prisma.user.findFirst({
-    where: { email: "teste@lexai.com.br" },
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("O seed da conta demo está desabilitado em produção.");
+  }
+
+  const demoPassword = process.env.DEMO_PASSWORD;
+  if (!demoPassword) {
+    throw new Error("DEMO_PASSWORD é obrigatória para executar o seed local.");
+  }
+
+  let user = await prisma.user.findUnique({
+    where: { email: DEMO_EMAIL },
   });
 
-  let user = existingUser;
+  const passwordHash = await bcrypt.hash(demoPassword, 12);
 
   if (!user) {
     user = await prisma.user.create({
       data: {
         name: "Dr. Usuário Teste",
-        email: "teste@lexai.com.br",
+        email: DEMO_EMAIL,
         oab: "SP 123456",
         plano: "STARTER",
+        passwordHash,
+      },
+    });
+  } else if (!user.passwordHash) {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
+  }
+
+  let membership = await prisma.membership.findFirst({
+    where: {
+      userId: user.id,
+      status: "ACTIVE",
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (!membership) {
+    const workspace = await prisma.workspace.create({
+      data: {
+        name: "Escritório Demo LexAI",
+        ownerId: user.id,
+        plano: "STARTER",
+      },
+    });
+
+    membership = await prisma.membership.create({
+      data: {
+        workspaceId: workspace.id,
+        userId: user.id,
+        role: "OWNER",
+        status: "ACTIVE",
       },
     });
   }
 
-  // Verificar se possui processos
-  const count = await prisma.processo.count({
-    where: { userId: user.id },
+  const workspaceId = membership.workspaceId;
+  const countProcessos = await prisma.processo.count({
+    where: { workspaceId },
   });
 
-  if (count === 0) {
-    const p1 = await prisma.processo.create({
+  if (countProcessos === 0) {
+    const processoUm = await prisma.processo.create({
       data: {
         userId: user.id,
+        workspaceId,
         numeroCnj: "0012345-67.2023.8.26.0100",
         tribunal: "TJSP",
         classe: "Ação de Indenização por Danos Morais",
@@ -54,20 +100,24 @@ export async function seedDatabase() {
             },
           ],
         },
-        alertas: {
-          create: {
-            userId: user.id,
-            tipo: "QUALQUER_MOVIMENTACAO",
-            canal: "EMAIL",
-            ativo: true,
-          },
-        },
       },
     });
 
-    const p2 = await prisma.processo.create({
+    await prisma.alerta.create({
       data: {
         userId: user.id,
+        workspaceId,
+        processoId: processoUm.id,
+        tipo: "QUALQUER_MOVIMENTACAO",
+        canal: "EMAIL",
+        ativo: true,
+      },
+    });
+
+    await prisma.processo.create({
+      data: {
+        userId: user.id,
+        workspaceId,
         numeroCnj: "0098765-43.2022.4.03.6100",
         tribunal: "TRF3",
         classe: "Mandado de Segurança",
@@ -91,13 +141,13 @@ export async function seedDatabase() {
     });
   }
 
-  // Seed Clientes se vazio
-  const countClientes = await prisma.cliente.count({ where: { userId: user.id } });
+  const countClientes = await prisma.cliente.count({ where: { workspaceId } });
   if (countClientes === 0) {
     await prisma.cliente.createMany({
       data: [
         {
           userId: user.id,
+          workspaceId,
           nome: "Carlos Eduardo Silva",
           tipo: "PF",
           documento: "123.456.789-00",
@@ -110,6 +160,7 @@ export async function seedDatabase() {
         },
         {
           userId: user.id,
+          workspaceId,
           nome: "Empresa XYZ S/A",
           tipo: "PJ",
           documento: "12.345.678/0001-99",
@@ -122,6 +173,7 @@ export async function seedDatabase() {
         },
         {
           userId: user.id,
+          workspaceId,
           nome: "Mariana Souza Santos",
           tipo: "PF",
           documento: "987.654.321-11",
@@ -136,13 +188,13 @@ export async function seedDatabase() {
     });
   }
 
-  // Seed Agenda se vazio
-  const countAgenda = await prisma.eventoAgenda.count({ where: { userId: user.id } });
+  const countAgenda = await prisma.eventoAgenda.count({ where: { workspaceId } });
   if (countAgenda === 0) {
     await prisma.eventoAgenda.createMany({
       data: [
         {
           userId: user.id,
+          workspaceId,
           titulo: "Contestação — Ação Trabalhista",
           tipo: "Prazo Processual",
           data: "2026-08-28",
@@ -154,6 +206,7 @@ export async function seedDatabase() {
         },
         {
           userId: user.id,
+          workspaceId,
           titulo: "Audiência de Conciliação Virtual",
           tipo: "Audiência",
           data: "2026-08-30",
@@ -165,6 +218,7 @@ export async function seedDatabase() {
         },
         {
           userId: user.id,
+          workspaceId,
           titulo: "Reunião de Alinhamento de Contrato",
           tipo: "Reunião",
           data: "2026-09-01",

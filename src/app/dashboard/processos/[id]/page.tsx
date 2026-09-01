@@ -9,7 +9,6 @@ import {
   Brain,
   Clock,
   Gavel,
-  Bell,
   ExternalLink,
   CheckCircle,
   FileText,
@@ -18,6 +17,8 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { isProcessoDetalhe } from "@/lib/types";
+import type { ProcessoDetalhe } from "@/lib/types";
 
 function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("pt-BR", {
@@ -41,7 +42,7 @@ export default function ProcessoDetailPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  const [processo, setProcesso] = useState<any>(null);
+  const [processo, setProcesso] = useState<ProcessoDetalhe | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedMov, setExpandedMov] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState<string | null>(null);
@@ -50,16 +51,20 @@ export default function ProcessoDetailPage() {
   useEffect(() => {
     if (!id) return;
     fetch(`/api/processos/${id}`)
-      .then((res) => res.json())
+      .then((res) => res.json() as Promise<unknown>)
       .then((data) => {
-        setProcesso(data);
-        if (data?.movimentacoes?.length > 0) {
-          setExpandedMov(data.movimentacoes[0].id);
+        if (isProcessoDetalhe(data)) {
+          setProcesso(data);
+          if (data.movimentacoes.length > 0) {
+            setExpandedMov(data.movimentacoes[0].id);
+          }
+        } else {
+          setProcesso(null);
         }
         setLoading(false);
       })
-      .catch((err) => {
-        console.error("Erro ao carregar detalhes do processo:", err);
+      .catch((error) => {
+        console.error("Erro ao carregar detalhes do processo:", error);
         setLoading(false);
       });
   }, [id]);
@@ -175,7 +180,7 @@ export default function ProcessoDetailPage() {
             {(!processo.movimentacoes || processo.movimentacoes.length === 0) ? (
               <p className="text-sm text-muted-foreground py-4">Nenhuma movimentação registrada para este processo.</p>
             ) : (
-              processo.movimentacoes.map((mov: any, i: number) => {
+              processo.movimentacoes.map((mov, i) => {
                 const isExpanded = expandedMov === mov.id;
                 const dotColor = tipoColors[mov.tipo] || "bg-primary";
                 const resumo = aiResumos[mov.id] || mov.resumoIa;
@@ -202,7 +207,7 @@ export default function ProcessoDetailPage() {
                       >
                         <div className="flex-1">
                           <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                            <span className="badge text-white text-xs" style={{ background: tipoColors[mov.tipo] || "#0F1B35" }}>
+                            <span className={`badge text-white text-xs ${tipoColors[mov.tipo] || "bg-primary"}`}>
                               <Gavel className="w-2.5 h-2.5" />
                               {mov.tipo}
                             </span>

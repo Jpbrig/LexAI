@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -27,6 +24,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -35,31 +33,40 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?   // Hash bcrypt da senha (null = autenticação via OAuth)
-  oab           String?   // Número OAB do advogado
-  plano         Plano     @default(FREE)
-  stripeCustomerId String? @unique
-  stripeSubscriptionId String? @unique
-  trialEndsAt   DateTime?
-  loginAttempts Int       @default(0)  // Contador de tentativas falhas
-  lockedUntil   DateTime?              // Conta bloqueada até esta data
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                   String    @id @default(cuid())
+  name                 String?
+  email                String?   @unique
+  emailVerified        DateTime?
+  image                String?
+  passwordHash         String?
+  oab                  String?
+  plano                Plano     @default(FREE)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  trialEndsAt          DateTime?
+  loginAttempts        Int       @default(0)
+  lockedUntil          DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  accounts   Account[]
-  sessions   Session[]
-  processos  Processo[]
-  alertas    Alerta[]
-  clientes   Cliente[]
-  agenda     EventoAgenda[]
+  accounts            Account[]
+  sessions            Session[]
+  ownedWorkspaces     Workspace[]          @relation("WorkspaceOwner")
+  memberships         Membership[]
+  appSessions         AppSession[]
+  passwordResetTokens PasswordResetToken[]
+  processos           Processo[]
+  alertas             Alerta[]
+  clientes            Cliente[]
+  agenda              EventoAgenda[]
+  auditLogs           AuditLog[]
+
+  @@index([email])
 }
 
 model VerificationToken {
@@ -70,27 +77,101 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Workspace {
+  id            String                  @id @default(cuid())
+  name          String
+  ownerId       String
+  plano         Plano                   @default(FREE)
+  owner         User                    @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships   Membership[]
+  processos     Processo[]
+  clientes      Cliente[]
+  alertas       Alerta[]
+  agenda        EventoAgenda[]
+  sessions      AppSession[]
+  credentials   IntegrationCredential[]
+  syncRuns      ProcessSyncRun[]
+  notifications Notification[]
+  subscription  Subscription?
+  auditLogs     AuditLog[]
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([ownerId])
+}
+
+model Membership {
+  id          String           @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole    @default(MEMBER)
+  status      MembershipStatus @default(ACTIVE)
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([workspaceId, userId])
+  @@index([userId, status])
+}
+
+model AppSession {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  userAgent   String?
+  ipHash      String?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, revokedAt])
+  @@index([workspaceId, revokedAt])
+  @@index([expiresAt])
+}
+
 model Processo {
-  id           String   @id @default(cuid())
-  numeroCnj    String   // Número no formato CNJ: NNNNNNN-DD.AAAA.J.TT.OOOO
-  tribunal     String   // Ex: TJSP, TRF1, STJ
-  classe       String?  // Ex: Ação Civil Pública
-  assunto      String?
-  orgaoJulgador String?
-  status       StatusProcesso @default(ATIVO)
+  id                String         @id @default(cuid())
+  numeroCnj         String
+  tribunal          String
+  classe            String?
+  assunto           String?
+  orgaoJulgador     String?
+  status            StatusProcesso @default(ATIVO)
   ultimaAtualizacao DateTime?
   dataDistribuicao  DateTime?
-  notas        String?  @db.Text
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  notas             String?        @db.Text
+  userId            String
+  workspaceId       String
+  clienteId         String?
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace         Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cliente           Cliente?       @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   movimentacoes Movimentacao[]
   alertas       Alerta[]
+  syncRuns      ProcessSyncRun[]
 
-  @@unique([numeroCnj, userId])
+  @@unique([numeroCnj, workspaceId])
   @@index([userId])
+  @@index([workspaceId, status])
 }
 
 model Movimentacao {
@@ -98,9 +179,9 @@ model Movimentacao {
   processoId  String
   processo    Processo @relation(fields: [processoId], references: [id], onDelete: Cascade)
   data        DateTime
-  tipo        String   // Ex: Despacho, Sentença, Acórdão
+  tipo        String
   descricao   String   @db.Text
-  resumoIa    String?  @db.Text  // Resumo gerado pela IA
+  resumoIa    String?  @db.Text
   complemento String?  @db.Text
   createdAt   DateTime @default(now())
 
@@ -109,18 +190,175 @@ model Movimentacao {
 }
 
 model Alerta {
-  id         String   @id @default(cuid())
-  userId     String
-  processoId String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  processo   Processo @relation(fields: [processoId], references: [id], onDelete: Cascade)
-  tipo       TipoAlerta @default(QUALQUER_MOVIMENTACAO)
-  canal      CanalAlerta @default(EMAIL)
-  ativo      Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  id          String      @id @default(cuid())
+  userId      String
+  workspaceId String
+  processoId  String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  processo    Processo    @relation(fields: [processoId], references: [id], onDelete: Cascade)
+  tipo        TipoAlerta  @default(QUALQUER_MOVIMENTACAO)
+  canal       CanalAlerta @default(EMAIL)
+  ativo       Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([userId])
+  @@index([workspaceId, ativo])
   @@index([processoId])
+}
+
+model Cliente {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  nome        String
+  tipo        String
+  documento   String
+  email       String
+  telefone    String
+  cidade      String
+  totalPago   Float     @default(0)
+  status      String    @default("Ativo")
+  observacoes String?   @db.Text
+  processos   Processo[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId, documento])
+}
+
+model EventoAgenda {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  titulo      String
+  tipo        String
+  data        String
+  hora        String
+  processo    String    @default("N/A")
+  cliente     String    @default("Geral")
+  status      String    @default("Pendente")
+  prioridade  String    @default("Alta")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([workspaceId, data])
+}
+
+model IntegrationCredential {
+  id             String              @id @default(cuid())
+  workspaceId    String
+  provider       IntegrationProvider
+  encryptedValue String              @db.Text
+  keyVersion     Int                 @default(1)
+  status         IntegrationStatus   @default(CONFIGURED)
+  lastCheckedAt  DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  workspace      Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId, status])
+}
+
+model ProcessSyncRun {
+  id                String        @id @default(cuid())
+  workspaceId       String
+  processoId        String
+  idempotencyKey    String
+  status            SyncRunStatus @default(PENDING)
+  attempts          Int           @default(0)
+  providerRequestId String?
+  errorCode         String?
+  errorMessage      String?
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  createdAt         DateTime      @default(now())
+  workspace         Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  processo          Processo      @relation(fields: [processoId], references: [id], onDelete: Cascade)
+
+  @@unique([processoId, idempotencyKey])
+  @@index([workspaceId, status])
+}
+
+model Notification {
+  id          String                 @id @default(cuid())
+  workspaceId String
+  type        NotificationType
+  status      NotificationStatus     @default(PENDING)
+  dedupeKey   String                 @unique
+  payload     Json
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  workspace   Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliveries  NotificationDelivery[]
+
+  @@index([workspaceId, status])
+}
+
+model NotificationDelivery {
+  id             String         @id @default(cuid())
+  notificationId String
+  channel        CanalAlerta
+  status         DeliveryStatus @default(PENDING)
+  attempts       Int            @default(0)
+  providerId     String?
+  lastError      String?
+  deliveredAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  notification   Notification   @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, channel])
+  @@index([status, channel])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  workspaceId          String             @unique
+  stripeCustomerId     String             @unique
+  stripeSubscriptionId String?            @unique
+  plan                 Plano              @default(FREE)
+  status               SubscriptionStatus @default(TRIALING)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  workspace            Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model ProcessedWebhook {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String
+  processedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+}
+
+model AuditLog {
+  id          String     @id @default(cuid())
+  workspaceId String?
+  userId      String?
+  action      String
+  resource    String
+  resourceId  String?
+  metadata    Json?
+  ipHash      String?
+  createdAt   DateTime   @default(now())
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([userId, createdAt])
 }
 
 enum Plano {
@@ -150,40 +388,74 @@ enum CanalAlerta {
   WHATSAPP
 }
 
-model Cliente {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nome         String
-  tipo         String   // "PF" | "PJ"
-  documento    String   // CPF ou CNPJ
-  email        String
-  telefone     String
-  cidade       String
-  totalPago    Float    @default(0)
-  status       String   @default("Ativo")
-  observacoes  String?  @db.Text
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@index([userId])
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  READ_ONLY
 }
 
-model EventoAgenda {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  titulo      String
-  tipo        String   // "Prazo Processual" | "Audiência" | "Reunião" | "Perícia"
-  data        String   // YYYY-MM-DD
-  hora        String
-  processo    String   @default("N/A")
-  cliente     String   @default("Geral")
-  status      String   @default("Pendente") // "Pendente" | "Concluído"
-  prioridade  String   @default("Alta")     // "Alta" | "Média" | "Baixa"
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([userId])
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REMOVED
 }
 
+enum IntegrationProvider {
+  DATAJUD
+  GEMINI
+  OPENAI
+  RESEND
+  CLICSIGN
+  JUSBRASIL
+  SERPRO
+  SENATRAN
+  INPI
+  IEPTB
+  WHATSAPP
+}
+
+enum IntegrationStatus {
+  CONFIGURED
+  UNCONFIGURED
+  DEGRADED
+  DISABLED
+}
+
+enum SyncRunStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTER
+}
+
+enum NotificationType {
+  PROCESS_MOVEMENT
+  PASSWORD_RESET
+  WORKSPACE_INVITE
+  BILLING
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  UNPAID
+}

@@ -1,4 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { requireServerSecret } from "@/lib/env";
+
+type DataJudHit = {
+  _source?: {
+    numeroProcesso?: string;
+    classe?: { nome?: string };
+    orgaoJulgador?: { nome?: string };
+    dataHoraUltimaAtualizacao?: string;
+  };
+};
+
+type BrasilApiQsa = {
+  nome_socio_raz_social?: string;
+  nome?: string;
+  qualificacao_socio?: string;
+  qual?: string;
+};
+
+type BrasilApiCompany = {
+  cnpj?: string;
+  razao_social?: string;
+  nome_fantasia?: string;
+  descricao_situacao_cadastral?: string;
+  data_inicio_atividade?: string;
+  capital_social?: string | number;
+  qsa?: BrasilApiQsa[];
+  cnae_fiscal_descricao?: string;
+  logradouro?: string;
+  numero?: string;
+  bairro?: string;
+  municipio?: string;
+  uf?: string;
+  cep?: string;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +46,8 @@ const FIPE_API_BASE = "https://parallelum.com.br/fipe/api/v1";
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await getAuthContext())) return unauthorizedResponse();
+
     const { tipo, termo } = await req.json();
 
     if (!termo || !tipo) {
@@ -65,12 +102,20 @@ export async function POST(req: NextRequest) {
 
       // 2. Buscador Processual (DataJud / CNJ API Oficial Pública)
       case "buscador": {
+        const datajudApiKey = requireServerSecret("DATAJUD_API_KEY");
+        if (!datajudApiKey) {
+          return NextResponse.json(
+            { error: "A integração DataJud está temporariamente indisponível." },
+            { status: 503 },
+          );
+        }
+
         try {
           const resDataJud = await fetch(`${DATAJUD_BASE}/api_publica_tjsp/_search`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `ApiKey cDZHYzlZa0JadVREZDJCendFbGFDa3M6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==`,
+              Authorization: `ApiKey ${datajudApiKey}`,
             },
             body: JSON.stringify({
               query: {
@@ -84,10 +129,10 @@ export async function POST(req: NextRequest) {
           });
 
           if (resDataJud.ok) {
-            const data = await resDataJud.json();
-            const hits = data?.hits?.hits || [];
+            const data = (await resDataJud.json()) as { hits?: { hits?: DataJudHit[] } };
+            const hits = data.hits?.hits || [];
             if (hits.length > 0) {
-              const resultados = hits.map((h: any) => ({
+              const resultados = hits.map((h) => ({
                 numeroCnj: h._source?.numeroProcesso,
                 classe: h._source?.classe?.nome || "Procedimento Comum Cível",
                 tribunal: "TJSP / CNJ",
@@ -119,7 +164,8 @@ export async function POST(req: NextRequest) {
         try {
           const resBrasilCnpj = await fetch(`${BRASIL_API_BASE}/cnpj/v1/${termoNumerico}`);
           if (resBrasilCnpj.ok) {
-            const cnpjData = await resBrasilCnpj.json();
+            const cnpjData = (await resBrasilCnpj.json()) as BrasilApiCompany;
+            const capitalSocial = Number(cnpjData.capital_social || 0);
             return NextResponse.json({
               sucesso: true,
               tipo,
@@ -130,8 +176,8 @@ export async function POST(req: NextRequest) {
                 nomeFantasia: cnpjData.nome_fantasia || "Não informado",
                 situacaoCadastral: cnpjData.descricao_situacao_cadastral,
                 dataInicioAtividade: cnpjData.data_inicio_atividade,
-                capitalSocial: `R$ ${parseFloat(cnpjData.capital_social || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-                quadroSocietarioQSA: cnpjData.qsa?.map((s: any) => ({
+                capitalSocial: `R$ ${capitalSocial.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+                quadroSocietarioQSA: cnpjData.qsa?.map((s) => ({
                   nomeSocio: s.nome_socio_raz_social || s.nome,
                   qualificacao: s.qualificacao_socio || s.qual,
                 })) || [],
@@ -276,7 +322,7 @@ export async function POST(req: NextRequest) {
         );
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erro na API de Consultas:", error);
     return NextResponse.json(
       { error: "Erro interno ao conectar aos servidores oficiais de consulta." },

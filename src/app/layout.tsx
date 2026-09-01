@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
+import { Providers } from "@/app/providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -39,7 +40,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`}>
-      <body className="font-sans antialiased" suppressHydrationWarning>{children}</body>
+      <body className="font-sans antialiased" suppressHydrationWarning>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
