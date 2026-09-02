@@ -4,6 +4,7 @@ declare module "next-auth" {
   interface Session {
     user: {
       id: string;
+      platformRole?: "USER" | "PLATFORM_ADMIN";
     } & DefaultSession["user"];
     sessionId: string;
     workspaceId: string;
@@ -17,5 +18,6 @@ declare module "next-auth/jwt" {
     sid?: string;
     workspaceId?: string;
     role?: "OWNER" | "ADMIN" | "MEMBER" | "READ_ONLY";
+    platformRole?: "USER" | "PLATFORM_ADMIN";
   }
 }

@@ -19,10 +19,13 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  ShieldCheck,
   Settings,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 export default function ConfiguracoesPage() {
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
@@ -429,14 +432,25 @@ export default function ConfiguracoesPage() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowApiKeyModal(true)}
-            className="btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5 text-slate-600 hover:text-slate-900"
-          >
-            <Settings className="w-3.5 h-3.5 text-amber-500" />
-            Painel do Admin Mestre
-          </button>
+          {session?.user?.platformRole === "PLATFORM_ADMIN" && (
+            <div className="flex items-center gap-2">
+              <a
+                href="/dashboard/admin"
+                className="btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5 text-slate-700 hover:text-slate-900 border-amber-300 bg-amber-50/50"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                Ir para Dashboard Admin
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowApiKeyModal(true)}
+                className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1.5"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                Chaves de API
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Banner Informativo do Modelo SaaS */}

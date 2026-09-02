@@ -23,6 +23,7 @@ import {
   DollarSign,
   Users,
   Calendar,
+  ShieldCheck,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -177,6 +178,28 @@ function DashboardLayoutContent({
                 <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                   Sistema
                 </p>
+              )}
+              {session?.user?.platformRole === "PLATFORM_ADMIN" && (
+                <Link
+                  href="/dashboard/admin"
+                  className={`
+                    flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold
+                    transition-all duration-200 group relative
+                    ${
+                      pathname.startsWith("/dashboard/admin")
+                        ? "bg-amber-500 text-slate-900 shadow-md shadow-amber-500/20"
+                        : "text-amber-600 hover:bg-amber-50 hover:text-amber-700 font-semibold"
+                    }
+                  `}
+                  title={collapsed ? "Painel Admin Master" : undefined}
+                >
+                  <ShieldCheck
+                    className={`w-5 h-5 flex-shrink-0 transition-colors ${
+                      pathname.startsWith("/dashboard/admin") ? "text-slate-900" : "text-amber-500"
+                    }`}
+                  />
+                  {!collapsed && <span className="truncate">Painel Admin Master</span>}
+                </Link>
               )}
               {secondaryNavItems.map((item) => {
                 const active = pathname.startsWith(item.href);

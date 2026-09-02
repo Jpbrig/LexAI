@@ -52,6 +52,7 @@ model User {
   trialEndsAt          DateTime?
   loginAttempts        Int       @default(0)
   lockedUntil          DateTime?
+  platformRole         PlatformRole @default(USER)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -367,6 +368,11 @@ enum Plano {
   STARTER
   PROFESSIONAL
   ESCRITORIO
+}
+
+enum PlatformRole {
+  USER
+  PLATFORM_ADMIN
 }
 
 enum StatusProcesso {

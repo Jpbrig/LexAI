@@ -100,6 +100,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               passwordHash: true,
               loginAttempts: true,
               lockedUntil: true,
+              platformRole: true,
             },
           });
 
@@ -136,11 +137,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
           }).catch(() => null);
 
+          const adminEmail = process.env.PLATFORM_ADMIN_EMAIL?.trim().toLowerCase();
+          const isEnvAdmin = adminEmail && user.email?.trim().toLowerCase() === adminEmail;
+          const platformRole = isEnvAdmin ? "PLATFORM_ADMIN" : user.platformRole;
+
           return {
             id: user.id,
             name: user.name,
             email: user.email,
             image: user.image,
+            platformRole,
           };
         } catch (err) {
           if (err instanceof CredentialsSignin) throw err;
@@ -167,6 +173,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.sid = appSession?.id || user.id;
           token.workspaceId = workspace.workspaceId;
           token.role = workspace.role;
+          token.platformRole = (user as unknown as { platformRole?: "USER" | "PLATFORM_ADMIN" }).platformRole || "USER";
         }
 
         if (trigger === "update" && session?.workspaceId) {
@@ -185,6 +192,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       if (session.user) {
         session.user.id = String(token.uid);
+        session.user.platformRole = (token.platformRole as "USER" | "PLATFORM_ADMIN") || "USER";
       }
       session.sessionId = String(token.sid);
       session.workspaceId = String(token.workspaceId);

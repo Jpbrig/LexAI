@@ -18,7 +18,7 @@ function addSecurityHeaders(response: NextResponse) {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(self), geolocation=()");
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
 
   const scriptSources = process.env.NODE_ENV === "production"
@@ -58,7 +58,8 @@ function isAuthPage(pathname: string) {
 
 export default auth((request) => {
   const { pathname, search } = request.nextUrl;
-  const hasSession = Boolean(request.auth?.user);
+  const user = request.auth?.user as { email?: string | null; platformRole?: string } | undefined;
+  const hasSession = Boolean(user);
 
   if ((isProtectedPage(pathname) || isPrivateApi(pathname)) && !hasSession) {
     if (isPrivateApi(pathname)) {
@@ -71,6 +72,17 @@ export default auth((request) => {
     const callbackUrl = `${pathname}${search}`;
     loginUrl.searchParams.set("callbackUrl", callbackUrl);
     return addSecurityHeaders(NextResponse.redirect(loginUrl));
+  }
+
+  // Admin Master Protection for /dashboard/admin
+  if (pathname.startsWith("/dashboard/admin")) {
+    const adminEmail = process.env.PLATFORM_ADMIN_EMAIL?.trim().toLowerCase();
+    const isEnvAdmin = adminEmail && user?.email?.trim().toLowerCase() === adminEmail;
+    const isPlatformAdmin = isEnvAdmin || user?.platformRole === "PLATFORM_ADMIN";
+
+    if (!isPlatformAdmin) {
+      return addSecurityHeaders(NextResponse.redirect(new URL("/dashboard", request.url)));
+    }
   }
 
   if (isAuthPage(pathname) && hasSession) {
