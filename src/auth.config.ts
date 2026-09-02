@@ -5,4 +5,7 @@ export const authConfig = {
     signIn: "/auth/signin",
   },
   trustHost: process.env.AUTH_TRUST_HOST === "true" || process.env.NODE_ENV !== "production",
-} satisfies Pick<NextAuthConfig, "pages" | "trustHost">;
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "Lt0TfZEg9ZyGwzlP8Qe2r+Koc17O+RIPQe1C8G2hrgg=",
+  providers: [],
+} satisfies NextAuthConfig;
+

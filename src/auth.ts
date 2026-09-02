@@ -1,6 +1,5 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -19,9 +18,6 @@ class AccountLockedError extends CredentialsSignin {
   code = "account-locked";
 }
 
-class InvalidCredentialsError extends CredentialsSignin {
-  code = "invalid-credentials";
-}
 
 async function ensurePersonalWorkspace(userId: string, name?: string | null) {
   const membership = await prisma.membership.findFirst({
