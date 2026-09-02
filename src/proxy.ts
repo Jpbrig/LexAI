@@ -58,7 +58,7 @@ function isAuthPage(pathname: string) {
 
 export default auth((request) => {
   const { pathname, search } = request.nextUrl;
-  const hasSession = Boolean(request.auth?.user?.id && request.auth.sessionId);
+  const hasSession = Boolean(request.auth?.user);
 
   if ((isProtectedPage(pathname) || isPrivateApi(pathname)) && !hasSession) {
     if (isPrivateApi(pathname)) {
