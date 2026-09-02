@@ -12,6 +12,10 @@ import {
   Bell,
   KeyRound,
   Loader2,
+  UserPlus,
+  X,
+  Shield,
+  Check,
 } from "lucide-react";
 
 export default function ConfiguracoesPage() {
@@ -34,6 +38,82 @@ export default function ConfiguracoesPage() {
 
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [whatsappAlerts, setWhatsappAlerts] = useState(false);
+
+  // Modal Convidar Membro State
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"ADMIN" | "ASSOCIATE" | "INTERN" | "SECRETARY">("ASSOCIATE");
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteSuccessMsg, setInviteSuccessMsg] = useState("");
+
+  type MembroItem = {
+    id: string;
+    nome: string;
+    email: string;
+    perfil: "ADMIN" | "ASSOCIATE" | "INTERN" | "SECRETARY";
+    mfa: string;
+    status: string;
+    isTitular?: boolean;
+  };
+
+  const [membros, setMembros] = useState<MembroItem[]>([
+    {
+      id: "1",
+      nome: "Dr. João Pedro Brigagão (Você)",
+      email: "jpbrigagao@advocacia.com",
+      perfil: "ADMIN",
+      mfa: "🔐 Ativo (TOTP)",
+      status: "Ativo",
+      isTitular: true,
+    },
+    {
+      id: "2",
+      nome: "Dra. Amanda Castro",
+      email: "amanda.castro@advocacia.com",
+      perfil: "ASSOCIATE",
+      mfa: "🔐 Ativo (TOTP)",
+      status: "Ativo",
+    },
+    {
+      id: "3",
+      nome: "Lucas Mendes",
+      email: "lucas.mendes@advocacia.com",
+      perfil: "INTERN",
+      mfa: "⚠️ Pendente",
+      status: "Ativo",
+    },
+  ]);
+
+  function handleConvidarMembro(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteName || !inviteEmail) return;
+
+    setInviteSending(true);
+
+    setTimeout(() => {
+      const novoMembro: MembroItem = {
+        id: `mem_${Date.now()}`,
+        nome: inviteName,
+        email: inviteEmail,
+        perfil: inviteRole,
+        mfa: "⚠️ Pendente",
+        status: "Ativo (Convite Enviado)",
+      };
+
+      setMembros((prev) => [...prev, novoMembro]);
+      setInviteSending(false);
+      setInviteSuccessMsg(`Convite enviado com sucesso para ${inviteEmail}!`);
+
+      setTimeout(() => {
+        setInviteSuccessMsg("");
+        setShowInviteModal(false);
+        setInviteName("");
+        setInviteEmail("");
+        setInviteRole("ASSOCIATE");
+      }, 1500);
+    }, 500);
+  }
 
   useEffect(() => {
     fetch("/api/user")
@@ -414,7 +494,12 @@ export default function ConfiguracoesPage() {
               <p className="text-xs text-slate-500">Controle granular de acesso para sócios, advogados associados, estagiários e secretária</p>
             </div>
           </div>
-          <button onClick={() => alert("Convite enviado com sucesso por e-mail!")} className="btn-primary text-xs px-4 py-2">
+          <button
+            type="button"
+            onClick={() => setShowInviteModal(true)}
+            className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
+          >
+            <UserPlus className="w-4 h-4 text-amber-400" />
             + Convidar Membro
           </button>
         </div>
@@ -432,62 +517,181 @@ export default function ConfiguracoesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              <tr className="hover:bg-slate-50/50">
-                <td className="p-3 font-bold text-slate-900">Dr. João Pedro Brigagão (Você)</td>
-                <td className="p-3 font-mono">jpbrigagao@advocacia.com</td>
-                <td className="p-3">
-                  <span className="bg-amber-100 text-amber-900 font-extrabold px-2.5 py-0.5 rounded-full text-[10px]">
-                    👑 Admin / Sócio Titular
-                  </span>
-                </td>
-                <td className="p-3">
-                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                    🔐 Ativo (TOTP)
-                  </span>
-                </td>
-                <td className="p-3 text-emerald-600 font-bold">Ativo</td>
-                <td className="p-3 text-right text-slate-400">Titular</td>
-              </tr>
-              <tr className="hover:bg-slate-50/50">
-                <td className="p-3 font-bold text-slate-900">Dra. Amanda Castro</td>
-                <td className="p-3 font-mono">amanda.castro@advocacia.com</td>
-                <td className="p-3">
-                  <span className="bg-blue-100 text-blue-900 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
-                    ⚖️ Advogada Associada
-                  </span>
-                </td>
-                <td className="p-3">
-                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                    🔐 Ativo (TOTP)
-                  </span>
-                </td>
-                <td className="p-3 text-emerald-600 font-bold">Ativo</td>
-                <td className="p-3 text-right">
-                  <button onClick={() => alert("Permissões atualizadas!")} className="text-amber-600 hover:underline font-bold">Editar</button>
-                </td>
-              </tr>
-              <tr className="hover:bg-slate-50/50">
-                <td className="p-3 font-bold text-slate-900">Lucas Mendes</td>
-                <td className="p-3 font-mono">lucas.mendes@advocacia.com</td>
-                <td className="p-3">
-                  <span className="bg-slate-100 text-slate-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
-                    🎓 Estagiário (Consulta &amp; Minutas)
-                  </span>
-                </td>
-                <td className="p-3">
-                  <span className="bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                    ⚠️ Pendente
-                  </span>
-                </td>
-                <td className="p-3 text-emerald-600 font-bold">Ativo</td>
-                <td className="p-3 text-right">
-                  <button onClick={() => alert("Permissões atualizadas!")} className="text-amber-600 hover:underline font-bold">Editar</button>
-                </td>
-              </tr>
+              {membros.map((mem) => (
+                <tr key={mem.id} className="hover:bg-slate-50/50">
+                  <td className="p-3 font-bold text-slate-900">{mem.nome}</td>
+                  <td className="p-3 font-mono">{mem.email}</td>
+                  <td className="p-3">
+                    {mem.perfil === "ADMIN" && (
+                      <span className="bg-amber-100 text-amber-900 font-extrabold px-2.5 py-0.5 rounded-full text-[10px]">
+                        👑 Admin / Sócio Titular
+                      </span>
+                    )}
+                    {mem.perfil === "ASSOCIATE" && (
+                      <span className="bg-blue-100 text-blue-900 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                        ⚖️ Advogado Associado
+                      </span>
+                    )}
+                    {mem.perfil === "INTERN" && (
+                      <span className="bg-slate-100 text-slate-700 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                        🎓 Estagiário (Consulta &amp; Minutas)
+                      </span>
+                    )}
+                    {mem.perfil === "SECRETARY" && (
+                      <span className="bg-purple-100 text-purple-900 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                        💼 Secretária (Agenda)
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    <span
+                      className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
+                        mem.mfa.includes("Ativo")
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {mem.mfa}
+                    </span>
+                  </td>
+                  <td className="p-3 text-emerald-600 font-bold">{mem.status}</td>
+                  <td className="p-3 text-right">
+                    {mem.isTitular ? (
+                      <span className="text-slate-400">Titular</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => alert(`Permissões do membro ${mem.nome} salvas!`)}
+                        className="text-amber-600 hover:underline font-bold"
+                      >
+                        Editar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* POPUP / MODAL: Convidar Membro */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden relative">
+            {/* Header do Modal */}
+            <div className="bg-slate-900 text-white p-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-900 flex items-center justify-center font-bold">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-white">Convidar Membro para a Equipe</h3>
+                  <p className="text-xs text-slate-300">Envie um convite de acesso com perfil de segurança (RBAC)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+                aria-label="Fechar janela de convite"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Formulário do Modal */}
+            <form onSubmit={handleConvidarMembro} className="p-6 space-y-4">
+              {inviteSuccessMsg && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 font-medium">
+                  <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>{inviteSuccessMsg}</span>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="invite-name" className="label text-xs font-bold text-slate-700 mb-1 block">
+                  Nome Completo do Membro
+                </label>
+                <input
+                  id="invite-name"
+                  type="text"
+                  required
+                  placeholder="Ex: Dra. Juliana Silveira"
+                  className="input text-sm"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="invite-email" className="label text-xs font-bold text-slate-700 mb-1 block">
+                  E-mail Profissional / Corporativo
+                </label>
+                <input
+                  id="invite-email"
+                  type="email"
+                  required
+                  placeholder="Ex: juliana.silveira@advocacia.com.br"
+                  className="input text-sm"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="invite-role" className="label text-xs font-bold text-slate-700 mb-1 block">
+                  Perfil de Acesso (Nível de Permissão RBAC)
+                </label>
+                <select
+                  id="invite-role"
+                  className="input text-sm font-medium"
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as "ADMIN" | "ASSOCIATE" | "INTERN" | "SECRETARY")}
+                >
+                  <option value="ADMIN">👑 Admin / Sócio Titular (Acesso Total &amp; Gestão)</option>
+                  <option value="ASSOCIATE">⚖️ Advogado Associado (Processos, Minutas &amp; Clientes)</option>
+                  <option value="INTERN">🎓 Estagiário (Consulta de Processos &amp; Minutas)</option>
+                  <option value="SECRETARY">💼 Secretária (Agenda, Atendimentos &amp; Notificações)</option>
+                </select>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1">
+                <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-amber-500" />
+                  Privacidade &amp; Segurança
+                </p>
+                <p className="text-[11px] leading-relaxed">
+                  O convidado receberá um e-mail oficial com o link seguro para ativar a conta no workspace do seu escritório.
+                </p>
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowInviteModal(false)}
+                  className="btn-outline text-xs px-4 py-2.5"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={inviteSending || !inviteName || !inviteEmail}
+                  className="btn-primary text-xs px-5 py-2.5 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {inviteSending ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                  ) : (
+                    <UserPlus className="w-4 h-4 text-amber-400" />
+                  )}
+                  {inviteSending ? "Enviando Convite..." : "Enviar Convite por E-mail"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* AUTENTICAÇÃO MULTIFATOR (MFA / 2FA) */}
       <div className="card space-y-4 border-l-4 border-l-emerald-500">
