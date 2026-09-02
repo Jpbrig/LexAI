@@ -32,6 +32,7 @@ import {
   MicOff,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import type { GovQueryResponse } from "@/lib/types";
 
@@ -166,18 +167,50 @@ function FerramentasContent() {
   const [isListening, setIsListening] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
   const [micError, setMicError] = useState("");
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [recognitionInstance, setRecognitionInstance] = useState<{ stop: () => void } | null>(null);
 
-  async function toggleVoiceRecognition() {
+  function openVoiceModal() {
+    setShowVoiceModal(true);
     setMicError("");
-    if (isListening && recognitionInstance) {
+    requestMicPermissionAndStart();
+  }
+
+  function closeVoiceModal() {
+    if (recognitionInstance) {
       try {
         recognitionInstance.stop();
       } catch {}
-      setIsListening(false);
-      return;
     }
+    setIsListening(false);
+    setShowVoiceModal(false);
+  }
 
+  function requestMicPermissionAndStart() {
+    setMicError("");
+
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      // Dispara IMEDIATAMENTE no clique do usuário para abrir o pop-up nativo do navegador
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((stream) => {
+          // Permissão concedida! Encerra a stream de teste
+          stream.getTracks().forEach((track) => track.stop());
+          startSpeechRecognition();
+        })
+        .catch((err: unknown) => {
+          console.warn("Permissão de microfone negada ou bloqueada:", err);
+          setIsListening(false);
+          setMicError(
+            "O navegador não exibiu o pop-up ou a permissão foi negada. Clique no ícone de CADEADO 🔒 ao lado da URL (topo do navegador) e altere a opção 'Microfone' para 'Permitir'."
+          );
+        });
+    } else {
+      startSpeechRecognition();
+    }
+  }
+
+  function startSpeechRecognition() {
     type SpeechRecInstance = {
       lang: string;
       continuous: boolean;
@@ -203,10 +236,6 @@ function FerramentasContent() {
     }
 
     try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-      }
-
       const recognition = new SpeechRec();
       recognition.lang = "pt-BR";
       recognition.continuous = true;
@@ -225,11 +254,13 @@ function FerramentasContent() {
         console.warn("Erro no reconhecimento de voz:", event);
         setIsListening(false);
         if (event.error === "not-allowed" || event.error === "permission-denied") {
-          setMicError("Permissão de microfone negada. Clique no ícone de cadeado 🔒 na barra do navegador para permitir o microfone.");
+          setMicError(
+            "Permissão de microfone bloqueada pelo navegador. Clique no ícone de CADEADO 🔒 ao lado da URL e selecione 'Permitir Microfone'."
+          );
         } else if (event.error === "no-speech") {
-          setMicError("Nenhuma fala detectada. Fale mais perto do microfone.");
+          setMicError("Nenhuma fala detectada. Tente falar mais próximo ao microfone.");
         } else if (event.error) {
-          setMicError(`Aviso no microfone (${event.error}). Tente novamente.`);
+          setMicError(`Aviso no microfone (${event.error}). Clique no botão abaixo para tentar novamente.`);
         }
       };
 
@@ -246,9 +277,9 @@ function FerramentasContent() {
       setRecognitionInstance(recognition);
       recognition.start();
     } catch (err: unknown) {
-      console.error("Erro ao acessar microfone:", err);
+      console.error("Erro ao iniciar ditado:", err);
       setIsListening(false);
-      setMicError("Permissão de microfone negada pelo navegador. Permita o acesso ao áudio e tente novamente.");
+      setMicError("Erro ao iniciar o microfone. Verifique as permissões de mídia do seu dispositivo.");
     }
   }
 
@@ -2429,7 +2460,7 @@ function FerramentasContent() {
                 {/* Botão de Microfone (Speech-to-Text) */}
                 <button
                   type="button"
-                  onClick={toggleVoiceRecognition}
+                  onClick={openVoiceModal}
                   title={isListening ? "Parar gravação" : "Falar por voz (Microfone)"}
                   aria-label={isListening ? "Parar gravação por voz" : "Ativar microfone para ditar pergunta"}
                   className={`p-3.5 rounded-xl border transition-all flex items-center justify-center ${
@@ -2458,6 +2489,111 @@ function FerramentasContent() {
               <p className="text-[10px] text-slate-400 mt-2 text-center">
                 Respostas geradas por IA com base em legislação e jurisprudência brasileira. Consulte sempre um advogado para casos específicos.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL: Gravador e Ditado por Voz */}
+      {showVoiceModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden relative">
+            {/* Header */}
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-900 flex items-center justify-center font-bold">
+                  <Mic className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-white">Ditado por Voz para IA</h3>
+                  <p className="text-xs text-amber-300">Assistente Jurídico Inteligente</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeVoiceModal}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+                aria-label="Fechar janela de voz"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Conteúdo do Modal */}
+            <div className="p-6 text-center space-y-5">
+              {/* Círculo do Microfone com Animação */}
+              <div className="flex justify-center my-2">
+                <button
+                  type="button"
+                  onClick={requestMicPermissionAndStart}
+                  className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
+                    isListening
+                      ? "bg-rose-500 text-white shadow-xl shadow-rose-200 ring-8 ring-rose-100 animate-pulse scale-105"
+                      : "bg-amber-500 text-slate-900 hover:bg-amber-400 shadow-lg shadow-amber-200 hover:scale-105"
+                  }`}
+                  title={isListening ? "Ouvindo... Clique para reiniciar" : "Clique para permitir microfone e ditar"}
+                >
+                  <Mic className="w-10 h-10" />
+                </button>
+              </div>
+
+              <div>
+                <p className="font-bold text-slate-900 text-base">
+                  {isListening ? "🎙️ Ouvindo... Fale sua pergunta" : "Toque no microfone para permitir o áudio"}
+                </p>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  O navegador exibirá um pop-up pedindo permissão de acesso ao microfone. Clique em <b>&quot;Permitir&quot;</b>.
+                </p>
+              </div>
+
+              {/* Mensagem de Erro / Orientação do Navegador */}
+              {micError && (
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl text-xs space-y-2 text-left">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="leading-relaxed font-medium">{micError}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={requestMicPermissionAndStart}
+                    className="w-full btn-primary text-xs py-2 justify-center mt-1"
+                  >
+                    🔓 Tentar Abrir Pop-up de Permissão Novamente
+                  </button>
+                </div>
+              )}
+
+              {/* Caixa de Texto Ditado */}
+              <div>
+                <label className="text-xs font-bold text-slate-700 block text-left mb-1">
+                  Texto Transcrito pela Voz:
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs font-medium resize-none outline-none focus:ring-2 focus:ring-amber-400"
+                  placeholder="Sua fala aparecerá aqui à medida que você conversa..."
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                />
+              </div>
+
+              {/* Ações */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button type="button" onClick={closeVoiceModal} className="btn-outline text-xs py-2 px-4">
+                  Fechar
+                </button>
+                <button
+                  type="button"
+                  disabled={!chatInput.trim()}
+                  onClick={() => {
+                    closeVoiceModal();
+                    enviarMensagem();
+                  }}
+                  className="btn-primary text-xs py-2 px-5 disabled:opacity-50"
+                >
+                  Enviar para a IA 🚀
+                </button>
+              </div>
             </div>
           </div>
         </div>

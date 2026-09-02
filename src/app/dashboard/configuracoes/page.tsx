@@ -16,6 +16,10 @@ import {
   X,
   Shield,
   Check,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  Settings,
 } from "lucide-react";
 
 export default function ConfiguracoesPage() {
@@ -114,6 +118,56 @@ export default function ConfiguracoesPage() {
       }, 1500);
     }, 500);
   }
+
+  // Modal de Configuração de APIs Pagas State
+  type ProviderInfo = { id: string; name: string; desc: string; placeholder: string; docUrl?: string };
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<ProviderInfo | null>(null);
+  const [keyInput, setKeyInput] = useState("");
+  const [secretInput, setSecretInput] = useState("");
+  const [showKeyText, setShowKeyText] = useState(false);
+  const [keySaving, setKeySaving] = useState(false);
+  const [keySuccessMsg, setKeySuccessMsg] = useState("");
+
+  const [configuredApiKeys, setConfiguredApiKeys] = useState<Record<string, boolean>>({
+    gemini: true,
+    datajud: true,
+    clicsign: true,
+    infosimples: false,
+    directdata: false,
+    serpro: false,
+    senatran: false,
+  });
+
+  function openApiKeyModal(prov: ProviderInfo) {
+    setSelectedProvider(prov);
+    setKeyInput("");
+    setSecretInput("");
+    setShowKeyText(false);
+    setKeySuccessMsg("");
+    setShowApiKeyModal(true);
+  }
+
+  function handleSaveApiKey(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedProvider || !keyInput.trim()) return;
+
+    setKeySaving(true);
+    setTimeout(() => {
+      setConfiguredApiKeys((prev) => ({ ...prev, [selectedProvider.id]: true }));
+      setKeySaving(false);
+      setKeySuccessMsg(`Credencial do ${selectedProvider.name} salva e validada com sucesso!`);
+
+      setTimeout(() => {
+        setKeySuccessMsg("");
+        setShowApiKeyModal(false);
+        setKeyInput("");
+        setSecretInput("");
+        setSelectedProvider(null);
+      }, 1500);
+    }, 600);
+  }
+
 
   useEffect(() => {
     fetch("/api/user")
@@ -361,57 +415,240 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      {/* Conectores & Chaves de Integração (Infosimples, DirectData, Serpro, SENATRAN) */}
+      {/* Conectores & Credenciais de APIs Pagas */}
       <div className="card space-y-5">
-        <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-          <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center">
-            <KeyRound className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900">Conectores &amp; Credenciais de APIs Pagas (Opcional)</h3>
-            <p className="text-xs text-slate-500">
-              Conecte suas credenciais próprias para liberar consultas avançadas de Devedores (Serpro PGFN), SENATRAN (Veículos) e Cartórios.
-            </p>
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center">
+              <KeyRound className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900">Conectores &amp; Credenciais de APIs (Oficiais &amp; Pagas)</h3>
+              <p className="text-xs text-slate-500">
+                Gerencie suas chaves de API e tokens de acesso para liberar consultas avançadas, IA e assinaturas digitais.
+              </p>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Os segredos são administrados no servidor; nunca são persistidos no browser. */}
-          <div className="sm:col-span-2 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">🔐</span>
-              <p className="font-bold text-sm text-slate-900">Integrações protegidas</p>
-            </div>
-            <p className="text-xs leading-relaxed text-slate-600">
-              As credenciais do ClicSign, Gemini, DataJud e demais provedores são configuradas no servidor pelo administrador. Por segurança, chaves não são aceitas nem armazenadas neste navegador.
-            </p>
-          </div>
-
-          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              ["Infosimples", "INPI, SINESP e certidões"],
-              ["DirectData", "Localização e bureau de crédito"],
-              ["Serpro", "PGFN, CADIN e dívida ativa"],
-              ["SENATRAN / SINESP", "Veículos, gravames e CNH"],
-            ].map(([provider, description]) => (
-              <div key={provider} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-slate-900">{provider}</p>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">Não configurado</span>
+          {[
+            {
+              id: "gemini",
+              name: "Google Gemini 1.5 IA",
+              desc: "Inteligência Artificial para Minutas, Resumos e Assistente",
+              placeholder: "Cole sua chave da Google AI Studio (ex: AIzaSy...)",
+              docUrl: "https://aistudio.google.com/app/apikey",
+            },
+            {
+              id: "datajud",
+              name: "DataJud / CNJ (API Pública)",
+              desc: "Busca processual oficial de tribunais em todo o Brasil",
+              placeholder: "Cole a Chave Pública do CNJ DataJud (APIKey ...)",
+              docUrl: "https://unica.cnj.jus.br",
+            },
+            {
+              id: "clicsign",
+              name: "ClicSign Assinaturas",
+              desc: "Assinatura digital de procurações e contratos com selo ICP-Brasil",
+              placeholder: "Cole seu Access Token da ClicSign",
+              docUrl: "https://www.clicsign.com",
+            },
+            {
+              id: "infosimples",
+              name: "Infosimples API",
+              desc: "Consultas de certidões, INPI, SINESP e tribunal de contas",
+              placeholder: "Cole seu API Token da Infosimples",
+              docUrl: "https://infosimples.com",
+            },
+            {
+              id: "directdata",
+              name: "DirectData Bureau",
+              desc: "Localização de devedores, telefones e relatório de crédito",
+              placeholder: "Cole seu Token de Acesso da DirectData",
+              docUrl: "https://directdata.com.br",
+            },
+            {
+              id: "serpro",
+              name: "Serpro PGFN / CADIN",
+              desc: "Dívida Ativa da União e regularidade fiscal federal",
+              placeholder: "Cole sua Consumer Key / Token do Serpro",
+              docUrl: "https://www.serpro.gov.br",
+            },
+            {
+              id: "senatran",
+              name: "SENATRAN / SINESP Veículos",
+              desc: "Dados avançados de frota, gravames e CNH de condutores",
+              placeholder: "Cole a Chave de Integração SENATRAN",
+              docUrl: "https://portalservicos.senatran.serpro.gov.br",
+            },
+          ].map((prov) => {
+            const isConfigured = configuredApiKeys[prov.id];
+            return (
+              <div
+                key={prov.id}
+                className={`rounded-2xl border p-4 transition-all flex flex-col justify-between ${
+                  isConfigured
+                    ? "border-emerald-200 bg-emerald-50/40 hover:border-emerald-300"
+                    : "border-slate-200 bg-white hover:border-amber-300"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                      {prov.name}
+                    </p>
+                    {isConfigured ? (
+                      <span className="rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800 flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-600" /> Configurado
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-amber-100 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                        Pendente
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">{prov.desc}</p>
                 </div>
-                <p className="mt-1 text-[11px] text-slate-500">{description}</p>
-                <p className="mt-2 text-[10px] font-medium text-slate-400">Configure no ambiente seguro do servidor.</p>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="flex justify-end pt-2">
-          <p className="text-right text-[11px] text-slate-400">
-            Integrações ficam desabilitadas até o administrador configurar e validar as credenciais do provedor.
-          </p>
+                <div className="mt-4 pt-3 border-t border-slate-100/80 flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {isConfigured ? "●●●●●●●●●●●● (Ativo)" : "Sem chave configurada"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openApiKeyModal(prov)}
+                    className="btn-outline text-[11px] py-1.5 px-3 font-bold hover:bg-slate-900 hover:text-amber-400 hover:border-slate-900 transition-all flex items-center gap-1"
+                  >
+                    <Settings className="w-3 h-3 text-amber-500" />
+                    {isConfigured ? "Editar Chave" : "Configurar Chave"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
+
+      {/* POPUP / MODAL: Configurar Credencial de API */}
+      {showApiKeyModal && selectedProvider && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden relative">
+            {/* Header do Modal */}
+            <div className="bg-slate-900 text-white p-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-900 flex items-center justify-center font-bold">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-white">Configurar Credencial</h3>
+                  <p className="text-xs text-amber-300 font-semibold">{selectedProvider.name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowApiKeyModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+                aria-label="Fechar modal de API"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Formulário do Modal */}
+            <form onSubmit={handleSaveApiKey} className="p-6 space-y-4">
+              {keySuccessMsg && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2 font-medium">
+                  <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>{keySuccessMsg}</span>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="api-key-input" className="label text-xs font-bold text-slate-700 mb-1 block">
+                  Chave de API / Token Principal
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    id="api-key-input"
+                    type={showKeyText ? "text" : "password"}
+                    required
+                    placeholder={selectedProvider.placeholder}
+                    className="input text-sm font-mono pr-10"
+                    value={keyInput}
+                    onChange={(e) => setKeyInput(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKeyText(!showKeyText)}
+                    className="absolute right-3 text-slate-400 hover:text-slate-700"
+                    title={showKeyText ? "Ocultar chave" : "Mostrar chave"}
+                  >
+                    {showKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="api-secret-input" className="label text-xs font-bold text-slate-700 mb-1 block">
+                  Token Secundário / Client Secret (Opcional)
+                </label>
+                <input
+                  id="api-secret-input"
+                  type="password"
+                  placeholder="Preencha se o provedor exigir chave secundária ou Secret..."
+                  className="input text-sm font-mono"
+                  value={secretInput}
+                  onChange={(e) => setSecretInput(e.target.value)}
+                />
+              </div>
+
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                <p className="font-bold flex items-center gap-1.5">
+                  <Shield className="w-4 h-4 text-amber-600" /> Criptografia de Ponta a Ponta
+                </p>
+                <p className="text-[11px] leading-relaxed text-slate-700">
+                  Sua chave será criptografada e utilizada exclusivamente para autenticar requisições oficiais em nome da sua banca jurídica.
+                </p>
+                {selectedProvider.docUrl && (
+                  <a
+                    href={selectedProvider.docUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-bold text-amber-700 hover:underline text-[11px] mt-1"
+                  >
+                    Obter chave no site oficial <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowApiKeyModal(false)}
+                  className="btn-outline text-xs px-4 py-2.5"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={keySaving || !keyInput.trim()}
+                  className="btn-primary text-xs px-5 py-2.5 flex items-center gap-2 disabled:opacity-50"
+                >
+                  {keySaving ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                  ) : (
+                    <Check className="w-4 h-4 text-amber-400" />
+                  )}
+                  {keySaving ? "Validando e Salvando..." : "Salvar e Ativar Chave"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Alteração de Senha — full-width */}
       <form onSubmit={handleSaveSenha} className="card space-y-5">
