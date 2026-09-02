@@ -312,6 +312,75 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // 10. Feriados Nacionais (BrasilAPI Real - Útil para Prazos CPC Art. 219)
+      case "feriados": {
+        const ano = termoNumerico.length === 4 ? termoNumerico : new Date().getFullYear().toString();
+        try {
+          const resFeriados = await fetch(`${BRASIL_API_BASE}/feriados/v1/${ano}`);
+          if (resFeriados.ok) {
+            const feriados = await resFeriados.json();
+            return NextResponse.json({
+              sucesso: true,
+              tipo,
+              fonte: `BrasilAPI / Calendário Oficial de Feriados Nacionais (${ano})`,
+              dados: {
+                ano,
+                totalFeriados: feriados.length,
+                lista: feriados.map((f: { date: string; name: string; type: string }) => ({
+                  data: new Date(f.date + "T00:00:00").toLocaleDateString("pt-BR"),
+                  nome: f.name,
+                  tipo: f.type,
+                })),
+              },
+            });
+          }
+        } catch {}
+
+        return NextResponse.json(
+          { error: `Não foi possível consultar os feriados nacionais para o ano '${ano}'.` },
+          { status: 404 }
+        );
+      }
+
+      // 11. Instituições Financeiras / Bancos (BrasilAPI / BACEN Real)
+      case "bancos": {
+        try {
+          const resBancos = await fetch(`${BRASIL_API_BASE}/banks/v1`);
+          if (resBancos.ok) {
+            const bancos = await resBancos.json();
+            const termoBusca = termoLimpo.toLowerCase();
+            const filtrados = bancos.filter((b: { name?: string; code?: number; ispb?: string }) =>
+              (b.name && b.name.toLowerCase().includes(termoBusca)) ||
+              (b.code && String(b.code) === termoNumerico) ||
+              (b.ispb && b.ispb.includes(termoNumerico))
+            ).slice(0, 10);
+
+            if (filtrados.length > 0) {
+              return NextResponse.json({
+                sucesso: true,
+                tipo,
+                fonte: "Banco Central do Brasil / BrasilAPI (Bancos & ISPB)",
+                dados: {
+                  termoConsultado: termoLimpo,
+                  totalEncontrados: filtrados.length,
+                  bancos: filtrados.map((b: { code?: number; name?: string; fullName?: string; ispb?: string }) => ({
+                    codigoCOMPE: b.code || "N/A",
+                    nomeCurto: b.name || "Sem nome",
+                    nomeRazaoSocial: b.fullName || b.name,
+                    ispb: b.ispb,
+                  })),
+                },
+              });
+            }
+          }
+        } catch {}
+
+        return NextResponse.json(
+          { error: `Nenhuma instituição financeira localizada com o termo '${termoLimpo}'. Tente o código do banco (ex: 001, 237, 341, 104) ou o nome.` },
+          { status: 404 }
+        );
+      }
+
       // 9. CNH / Dados Profissionais
       case "cnh":
       case "profissionais":

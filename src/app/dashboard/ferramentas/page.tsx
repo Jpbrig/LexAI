@@ -25,6 +25,7 @@ import {
   DollarSign as MoneyIcon,
   Scale,
   CheckCircle2,
+  Calendar,
   AlertCircle,
   Info,
 } from "lucide-react";
@@ -65,6 +66,7 @@ function FerramentasContent() {
   const activeTab: FerramentaTab = isFerramentaTab(tabParam) ? tabParam : "calculadoras";
   const [selectedCalc, setSelectedCalc] = useState<string>("trabalhista");
   const [selectedConsulta, setSelectedConsulta] = useState<string>("buscador");
+  const [consultaCatFilter, setConsultaCatFilter] = useState<string>("todas");
 
   // Calculadora Trabalhista State
   const [salario, setSalario] = useState<string>("3500");
@@ -833,19 +835,21 @@ function FerramentasContent() {
   ];
 
   const consultasLista = [
-    { id: "cep", name: "Busca CEP & Endereço Completo", icon: Building2, desc: "Logradouro, bairro, município e UF oficiais", inputType: "CEP (8 dígitos)", placeholder: "Digite o CEP (ex: 01310-200 ou 01310200)...", isFree: true },
-    { id: "buscador", name: "Buscador Processual", icon: Search, desc: "Consulta por Nome, CPF, CNPJ ou OAB em todos os tribunais", inputType: "CNJ / CPF / Nome / OAB", placeholder: "Ex: 1002345-12.2024.8.26.0100 ou CPF/Nome", isFree: true },
-    { id: "cpf_status", name: "Situação Cadastral de CPF", icon: User, desc: "Regularidade perante a Receita Federal", inputType: "CPF", placeholder: "Digite o CPF (11 dígitos)... Ex: 123.456.789-00", isFree: true },
-    { id: "empresas", name: "Sociedades e Empresas", icon: Building2, desc: "Quadro de sócios e administradores (QSA)", inputType: "CNPJ", placeholder: "Digite o CNPJ (14 dígitos)... Ex: 00.000.000/0001-91", isFree: true },
-    { id: "grupo_cnpj", name: "Grupo Econômico de CNPJ", icon: Layers, desc: "Mapeamento de coligadas e filiais", inputType: "CNPJ", placeholder: "Digite o CNPJ da Matriz... Ex: 00.000.000/0001-91", isFree: true },
-    { id: "veiculo", name: "Dados do Veículo / Renavam", icon: Car, desc: "Histórico, multas, restrições e gravames", inputType: "Placa ou RENAVAM", placeholder: "Digite a Placa (ex: ABC1D23) ou RENAVAM...", isFree: false, provider: "SENATRAN / SINESP / Infosimples" },
-    { id: "rastreio_veiculo", name: "Rastreamento de Veículo", icon: Car, desc: "Busca de frota e ativos móveis para execução", inputType: "CPF ou CNPJ do Proprietário", placeholder: "Digite o CPF ou CNPJ para buscar a frota...", isFree: false, provider: "SENATRAN / DirectData" },
-    { id: "cnh", name: "Dados da CNH", icon: CreditCard, desc: "Pontuação, suspensões e categoria", inputType: "CPF ou Nº da CNH", placeholder: "Digite o CPF do condutor ou número da CNH...", isFree: false, provider: "SENATRAN / DETRAN" },
-    { id: "marcas", name: "Marcas e Patentes (INPI)", icon: Award, desc: "Pesquisa de marcas registradas e patentes", inputType: "Nome da Marca ou Processo INPI", placeholder: "Digite o nome da marca ou nº do processo INPI...", isFree: false, provider: "INPI / Infosimples" },
-    { id: "credito", name: "Restrição de Crédito", icon: CreditCard, desc: "Negativações nos Cartórios de Protesto (IEPTB)", inputType: "CPF ou CNPJ", placeholder: "Digite o CPF ou CNPJ para consulta de protestos...", isFree: false, provider: "IEPTB Cartórios" },
-    { id: "localizacao", name: "Localização de Devedores", icon: User, desc: "Busca de endereços e telefones atualizados", inputType: "CPF, CNPJ ou Nome Completo", placeholder: "Digite o CPF, CNPJ ou Nome do Devedor...", isFree: false, provider: "Serpro PGFN / DirectData" },
-    { id: "relacionamentos", name: "Relacionamentos & Sócios", icon: Users, desc: "Vínculos societários e parentescos", inputType: "CPF ou Nome do Sócio", placeholder: "Digite o CPF ou Nome do Investigado...", isFree: true },
-    { id: "profissionais", name: "Dados Profissionais", icon: Briefcase, desc: "Vínculos empregatícios e registro de classe", inputType: "CPF ou Registro (OAB, CRM, etc)", placeholder: "Digite o CPF ou Registro Profissional...", isFree: false, provider: "Conselhos de Classe" },
+    { id: "buscador", name: "Buscador Processual (DataJud)", icon: Search, desc: "Consulta por Número CNJ, CPF ou Nome em todos os tribunais", inputType: "CNJ / CPF / Nome", placeholder: "Ex: 1002345-12.2024.8.26.0100 ou CPF/Nome...", isFree: true, categoria: "processual", fonte: "DataJud / CNJ API Oficial" },
+    { id: "cep", name: "Busca CEP & Endereço Completo", icon: Building2, desc: "Logradouro, bairro, município e UF oficiais", inputType: "CEP (8 dígitos)", placeholder: "Digite o CEP (ex: 01310-200 ou 01310200)...", isFree: true, categoria: "cadastral", fonte: "ViaCEP / Correios" },
+    { id: "cpf_status", name: "Situação Cadastral de CPF", icon: User, desc: "Regularidade perante a Receita Federal", inputType: "CPF", placeholder: "Digite o CPF (11 dígitos)... Ex: 123.456.789-00", isFree: true, categoria: "cadastral", fonte: "Receita Federal / BrasilAPI" },
+    { id: "empresas", name: "Sociedades e Empresas (QSA)", icon: Building2, desc: "Quadro de sócios, capital social e CNAE", inputType: "CNPJ", placeholder: "Digite o CNPJ (14 dígitos)... Ex: 00.000.000/0001-91", isFree: true, categoria: "empresarial", fonte: "Receita Federal / ReceitaWS" },
+    { id: "grupo_cnpj", name: "Grupo Econômico de CNPJ", icon: Layers, desc: "Mapeamento de coligadas, matriz e filiais", inputType: "CNPJ", placeholder: "Digite o CNPJ da Matriz... Ex: 00.000.000/0001-91", isFree: true, categoria: "empresarial", fonte: "Receita Federal / BrasilAPI" },
+    { id: "relacionamentos", name: "Relacionamentos & Sócios", icon: Users, desc: "Vínculos societários e participações", inputType: "CPF ou CNPJ", placeholder: "Digite o CPF ou CNPJ...", isFree: true, categoria: "empresarial", fonte: "BrasilAPI / ReceitaWS" },
+    { id: "feriados", name: "Feriados Nacionais (Contagem Prazos)", icon: Calendar, desc: "Calendário oficial para contagem de prazos CPC Art. 219", inputType: "Ano (ex: 2026)", placeholder: "Digite o ano (ex: 2026)...", isFree: true, categoria: "processual", fonte: "BrasilAPI / Calendário Oficial" },
+    { id: "bancos", name: "Bancos & Código ISPB / COMPE", icon: DollarSign, desc: "Busca de código bancário para penhora SISBAJUD e contas", inputType: "Código ou Nome do Banco", placeholder: "Digite o código (ex: 001, 237, 341) ou nome do banco...", isFree: true, categoria: "bancos", fonte: "Banco Central do Brasil" },
+    { id: "veiculo", name: "Dados do Veículo / Tabela FIPE", icon: Car, desc: "Ficha técnica, FIPE, multas, restrições e gravames", inputType: "Placa ou RENAVAM", placeholder: "Digite a Placa (ex: ABC1D23) ou RENAVAM...", isFree: true, categoria: "veiculo", fonte: "Tabela FIPE / Base Pública" },
+    { id: "rastreio_veiculo", name: "Rastreamento de Veículo", icon: Car, desc: "Busca de frota e ativos móveis para execução", inputType: "CPF ou CNPJ do Proprietário", placeholder: "Digite o CPF ou CNPJ para buscar a frota...", isFree: false, provider: "SENATRAN / DirectData", categoria: "veiculo", fonte: "SENATRAN / DirectData" },
+    { id: "cnh", name: "Dados da CNH", icon: CreditCard, desc: "Pontuação, suspensões e categoria", inputType: "CPF ou Nº da CNH", placeholder: "Digite o CPF do condutor ou número da CNH...", isFree: false, provider: "SENATRAN / DETRAN", categoria: "veiculo", fonte: "DETRAN / SENATRAN" },
+    { id: "marcas", name: "Marcas e Patentes (INPI)", icon: Award, desc: "Pesquisa de marcas registradas e patentes", inputType: "Nome da Marca ou Processo INPI", placeholder: "Digite o nome da marca ou nº do processo INPI...", isFree: false, provider: "INPI / Infosimples", categoria: "processual", fonte: "INPI" },
+    { id: "credito", name: "Restrição de Crédito", icon: CreditCard, desc: "Negativações nos Cartórios de Protesto (IEPTB)", inputType: "CPF ou CNPJ", placeholder: "Digite o CPF ou CNPJ para consulta de protestos...", isFree: false, provider: "IEPTB Cartórios", categoria: "bancos", fonte: "Central de Protestos IEPTB" },
+    { id: "localizacao", name: "Localização de Devedores", icon: User, desc: "Busca de endereços e telefones atualizados", inputType: "CPF, CNPJ ou Nome Completo", placeholder: "Digite o CPF, CNPJ ou Nome do Devedor...", isFree: false, provider: "Serpro PGFN / DirectData", categoria: "cadastral", fonte: "Serpro PGFN / CADIN" },
+    { id: "profissionais", name: "Dados Profissionais", icon: Briefcase, desc: "Vínculos empregatícios e registro de classe", inputType: "CPF ou Registro (OAB, CRM, etc)", placeholder: "Digite o CPF ou Registro Profissional...", isFree: false, provider: "Conselhos de Classe", categoria: "processual", fonte: "Conselhos Oficiais" },
   ];
 
   const outrosLista = [
@@ -1171,24 +1175,70 @@ function FerramentasContent() {
       {/* ABA 2: CONSULTAS LEGAIS */}
       {activeTab === "consultas" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {consultasLista.map((c) => (
+          {/* Categorias estilo Cobrativa */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {[
+              { id: "todas", label: "Todas", count: consultasLista.length },
+              { id: "processual", label: "Processual & Jurídico", count: consultasLista.filter((c) => c.categoria === "processual").length },
+              { id: "cadastral", label: "Cadastral & Endereço", count: consultasLista.filter((c) => c.categoria === "cadastral").length },
+              { id: "empresarial", label: "Empresarial & QSA", count: consultasLista.filter((c) => c.categoria === "empresarial").length },
+              { id: "bancos", label: "Financeiro & Bancos", count: consultasLista.filter((c) => c.categoria === "bancos").length },
+              { id: "veiculo", label: "Veículos & Ativos", count: consultasLista.filter((c) => c.categoria === "veiculo").length },
+            ].map((cat) => (
               <button
-                key={c.id}
-                onClick={() => setSelectedConsulta(c.id)}
-                className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between ${
-                  selectedConsulta === c.id
-                    ? "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30 text-slate-900 font-bold"
-                    : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                key={cat.id}
+                onClick={() => setConsultaCatFilter(cat.id)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 border ${
+                  consultaCatFilter === cat.id
+                    ? "bg-slate-900 text-amber-400 border-slate-900 shadow-sm"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                 }`}
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <c.icon className={`w-5 h-5 ${selectedConsulta === c.id ? "text-amber-600" : "text-slate-400"}`} />
-                  <span className="text-xs font-bold truncate">{c.name}</span>
-                </div>
-                <p className="text-[11px] text-slate-500 line-clamp-2 leading-tight">{c.desc}</p>
+                <span>{cat.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                    consultaCatFilter === cat.id ? "bg-amber-400/20 text-amber-300" : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {cat.count}
+                </span>
               </button>
             ))}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {consultasLista
+              .filter((c) => consultaCatFilter === "todas" || c.categoria === consultaCatFilter)
+              .map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedConsulta(c.id)}
+                  className={`p-4 rounded-2xl border text-left transition-all flex flex-col justify-between ${
+                    selectedConsulta === c.id
+                      ? "border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30 text-slate-900 font-bold"
+                      : "border-slate-200 bg-white hover:border-slate-300 text-slate-700"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <c.icon className={`w-4 h-4 flex-shrink-0 ${selectedConsulta === c.id ? "text-amber-600" : "text-slate-400"}`} />
+                        <span className="text-xs font-bold truncate">{c.name}</span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-2 leading-tight mb-3">{c.desc}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] pt-2 border-t border-slate-100">
+                    <span className="font-semibold text-slate-500 truncate max-w-[110px]">{c.fonte}</span>
+                    {c.isFree ? (
+                      <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Grátis</span>
+                    ) : (
+                      <span className="text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded">Chave</span>
+                    )}
+                  </div>
+                </button>
+              ))}
           </div>
 
           <div className="card space-y-4">
