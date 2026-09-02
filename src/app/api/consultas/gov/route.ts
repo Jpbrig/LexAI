@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `ApiKey ${datajudApiKey}`,
+              Authorization: `APIKey ${datajudApiKey}`,
             },
             body: JSON.stringify({
               query: {
