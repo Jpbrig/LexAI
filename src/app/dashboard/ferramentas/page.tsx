@@ -165,9 +165,15 @@ function FerramentasContent() {
   // Voz (Speech-to-Text & Text-to-Speech)
   const [isListening, setIsListening] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+  const [micError, setMicError] = useState("");
+  const [recognitionInstance, setRecognitionInstance] = useState<{ stop: () => void } | null>(null);
 
-  function toggleVoiceRecognition() {
-    if (isListening) {
+  async function toggleVoiceRecognition() {
+    setMicError("");
+    if (isListening && recognitionInstance) {
+      try {
+        recognitionInstance.stop();
+      } catch {}
       setIsListening(false);
       return;
     }
@@ -178,9 +184,10 @@ function FerramentasContent() {
       interimResults: boolean;
       onstart: () => void;
       onend: () => void;
-      onerror: () => void;
+      onerror: (event: { error?: string }) => void;
       onresult: (event: { results: Array<Array<{ transcript: string }>> }) => void;
       start: () => void;
+      stop: () => void;
     };
 
     const win = window as unknown as {
@@ -191,30 +198,57 @@ function FerramentasContent() {
     const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
 
     if (!SpeechRec) {
-      alert("Seu navegador não suporta reconhecimento de voz. Recomendamos o Google Chrome ou Microsoft Edge.");
+      setMicError("Seu navegador não suporta a API de voz. Recomendamos o Google Chrome ou Microsoft Edge.");
       return;
     }
 
     try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+
       const recognition = new SpeechRec();
       recognition.lang = "pt-BR";
-      recognition.continuous = false;
+      recognition.continuous = true;
       recognition.interimResults = true;
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-
-      recognition.onresult = (event: { results: Array<Array<{ transcript: string }>> }) => {
-        const transcript = Array.from(event.results)
-          .map((result) => result[0].transcript)
-          .join("");
-        setChatInput(transcript);
+      recognition.onstart = () => {
+        setIsListening(true);
+        setMicError("");
       };
 
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.onerror = (event: { error?: string }) => {
+        console.warn("Erro no reconhecimento de voz:", event);
+        setIsListening(false);
+        if (event.error === "not-allowed" || event.error === "permission-denied") {
+          setMicError("Permissão de microfone negada. Clique no ícone de cadeado 🔒 na barra do navegador para permitir o microfone.");
+        } else if (event.error === "no-speech") {
+          setMicError("Nenhuma fala detectada. Fale mais perto do microfone.");
+        } else if (event.error) {
+          setMicError(`Aviso no microfone (${event.error}). Tente novamente.`);
+        }
+      };
+
+      recognition.onresult = (event: { results: Array<Array<{ transcript: string }>> }) => {
+        let transcript = "";
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        if (transcript) {
+          setChatInput(transcript);
+        }
+      };
+
+      setRecognitionInstance(recognition);
       recognition.start();
-    } catch {
+    } catch (err: unknown) {
+      console.error("Erro ao acessar microfone:", err);
       setIsListening(false);
+      setMicError("Permissão de microfone negada pelo navegador. Permita o acesso ao áudio e tente novamente.");
     }
   }
 
@@ -2361,6 +2395,15 @@ function FerramentasContent() {
               )}
             </div>
             <div className="border-t border-slate-100 p-4 bg-slate-50/50">
+              {micError && (
+                <div className="mb-2 p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <span>{micError}</span>
+                  </div>
+                  <button type="button" onClick={() => setMicError("")} className="text-amber-800 hover:text-slate-900 font-bold">✕</button>
+                </div>
+              )}
               {isListening && (
                 <div className="mb-2 p-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs flex items-center gap-2 animate-pulse">
                   <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
