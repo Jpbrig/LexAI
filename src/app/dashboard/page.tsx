@@ -168,21 +168,7 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground mt-2">{data?.stats?.totalProcessos ?? 0} processos salvos no Supabase</p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="card bg-primary/5 border-primary/20"
-          >
-            <h2 className="font-semibold text-primary text-sm uppercase tracking-wider mb-2">Login de Teste</h2>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-              Use estes dados para testar o sistema no Vercel:
-            </p>
-            <div className="bg-white rounded-lg p-3 border border-border text-xs font-mono space-y-1">
-              <p><span className="text-muted-foreground">Email:</span> teste@lexai.com.br</p>
-              <p><span className="text-muted-foreground">Senha:</span> 12345678</p>
-            </div>
-          </motion.div>
+
         </div>
       </div>
     </div>

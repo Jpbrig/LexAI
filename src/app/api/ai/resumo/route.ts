@@ -55,10 +55,13 @@ async function fetchWithTimeout(url: string, init: RequestInit) {
 
 async function resumirComGemini(texto: string, tipo: string, apiKey: string) {
   const response = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
       body: JSON.stringify({
         contents: [{ parts: [{ text: buildPrompt(texto, tipo) }] }],
         generationConfig: { temperature: 0.3, maxOutputTokens: 512 },

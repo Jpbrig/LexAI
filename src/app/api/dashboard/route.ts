@@ -12,59 +12,62 @@ export async function GET() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
+    const [totalProcessos, processosAtivos, movimentacoesHoje, totalAlertas, movimentacoesRecentes] = await Promise.all([
+      prisma.processo.count({
+        where: { workspaceId: context.workspaceId },
+      }),
+      prisma.processo.count({
+        where: { workspaceId: context.workspaceId, status: "ATIVO" },
+      }),
+      prisma.movimentacao.count({
+        where: {
+          processo: { workspaceId: context.workspaceId },
+          data: { gte: startOfToday },
+        },
+      }),
+      prisma.alerta.count({
+        where: { workspaceId: context.workspaceId, ativo: true },
+      }),
+      prisma.movimentacao.findMany({
+        where: { processo: { workspaceId: context.workspaceId } },
+        orderBy: { data: "desc" },
+        take: 20,
+        include: {
+          processo: {
+            select: { id: true, numeroCnj: true, tribunal: true },
+          },
+        },
+      }),
+    ]);
+
     const user = await prisma.user.findUnique({
       where: { id: context.userId },
-      select: {
-        name: true,
-        email: true,
-        oab: true,
-        plano: true,
-        processos: {
-          where: { workspaceId: context.workspaceId },
-          include: {
-            movimentacoes: {
-              orderBy: { data: "desc" },
-            },
-            alertas: {
-              where: { workspaceId: context.workspaceId },
-            },
-          },
-          orderBy: { updatedAt: "desc" },
-        },
-        alertas: {
-          where: { workspaceId: context.workspaceId, ativo: true },
-        },
-      },
+      select: { name: true, email: true, oab: true, plano: true },
     });
 
     if (!user) return unauthorizedResponse();
 
-    const todasMovimentacoes = user.processos
-      .flatMap((processo) =>
-        processo.movimentacoes.map((movimentacao) => ({
-          id: movimentacao.id,
-          processoId: processo.id,
-          processo: processo.numeroCnj,
-          tribunal: processo.tribunal,
-          tipo: movimentacao.tipo,
-          descricao: movimentacao.descricao,
-          resumoIa: movimentacao.resumoIa,
-          data: movimentacao.data,
-          urgente: movimentacao.tipo === "Sentença" || movimentacao.tipo === "Acórdão",
-        })),
-      )
-      .sort((a, b) => b.data.getTime() - a.data.getTime());
+    const formattedMovimentacoes = movimentacoesRecentes.map((mov) => ({
+      id: mov.id,
+      processoId: mov.processo.id,
+      processo: mov.processo.numeroCnj,
+      tribunal: mov.processo.tribunal,
+      tipo: mov.tipo,
+      descricao: mov.descricao,
+      resumoIa: mov.resumoIa,
+      data: mov.data,
+      urgente: mov.tipo === "Sentença" || mov.tipo === "Acórdão",
+    }));
 
     return NextResponse.json({
       user,
       stats: {
-        totalProcessos: user.processos.length,
-        processosAtivos: user.processos.filter((processo) => processo.status === "ATIVO").length,
-        movimentacoesHoje: todasMovimentacoes.filter((movimentacao) => movimentacao.data >= startOfToday).length,
-        totalAlertas: user.alertas.length,
+        totalProcessos,
+        processosAtivos,
+        movimentacoesHoje,
+        totalAlertas,
       },
-      processos: user.processos,
-      recentMovimentacoes: todasMovimentacoes,
+      recentMovimentacoes: formattedMovimentacoes,
     });
   } catch (error) {
     console.error("Erro na API do dashboard:", error);
