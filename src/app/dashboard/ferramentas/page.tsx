@@ -28,6 +28,10 @@ import {
   Calendar,
   AlertCircle,
   Info,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import type { GovQueryResponse } from "@/lib/types";
 
@@ -157,6 +161,81 @@ function FerramentasContent() {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [loadingChat, setLoadingChat] = useState(false);
+
+  // Voz (Speech-to-Text & Text-to-Speech)
+  const [isListening, setIsListening] = useState(false);
+  const [speakingIndex, setSpeakingIndex] = useState<number | null>(null);
+
+  function toggleVoiceRecognition() {
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    type SpeechRecInstance = {
+      lang: string;
+      continuous: boolean;
+      interimResults: boolean;
+      onstart: () => void;
+      onend: () => void;
+      onerror: () => void;
+      onresult: (event: { results: Array<Array<{ transcript: string }>> }) => void;
+      start: () => void;
+    };
+
+    const win = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecInstance;
+      webkitSpeechRecognition?: new () => SpeechRecInstance;
+    };
+
+    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
+
+    if (!SpeechRec) {
+      alert("Seu navegador não suporta reconhecimento de voz. Recomendamos o Google Chrome ou Microsoft Edge.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.lang = "pt-BR";
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => setIsListening(true);
+      recognition.onend = () => setIsListening(false);
+      recognition.onerror = () => setIsListening(false);
+
+      recognition.onresult = (event: { results: Array<Array<{ transcript: string }>> }) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0].transcript)
+          .join("");
+        setChatInput(transcript);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  }
+
+  function lerMensagemVoz(text: string, index: number) {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      if (speakingIndex === index) {
+        window.speechSynthesis.cancel();
+        setSpeakingIndex(null);
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "pt-BR";
+      utterance.rate = 1.0;
+      utterance.onend = () => setSpeakingIndex(null);
+      utterance.onerror = () => setSpeakingIndex(null);
+      setSpeakingIndex(index);
+      window.speechSynthesis.speak(utterance);
+    }
+  }
 
   async function enviarMensagem() {
     const texto = chatInput.trim();
@@ -2245,12 +2324,28 @@ function FerramentasContent() {
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold ${msg.role === "user" ? "bg-slate-900" : "bg-amber-500"}`}>
                     {msg.role === "user" ? "EU" : "IA"}
                   </div>
-                  <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                    msg.role === "user"
-                      ? "bg-slate-900 text-white rounded-tr-sm"
-                      : "bg-slate-50 border border-slate-200 text-slate-800 rounded-tl-sm"
-                  }`}>
-                    {msg.text}
+                  <div className="relative group max-w-[80%]">
+                    <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-slate-900 text-white rounded-tr-sm"
+                        : "bg-slate-50 border border-slate-200 text-slate-800 rounded-tl-sm"
+                    }`}>
+                      {msg.text}
+                    </div>
+
+                    {msg.role === "assistant" && (
+                      <button
+                        type="button"
+                        onClick={() => lerMensagemVoz(msg.text, i)}
+                        title={speakingIndex === i ? "Parar leitura por voz" : "Ouvir resposta (Voz)"}
+                        className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium transition-colors ${
+                          speakingIndex === i ? "text-amber-600 font-bold animate-pulse" : "text-slate-400 hover:text-slate-700"
+                        }`}
+                      >
+                        {speakingIndex === i ? <VolumeX className="w-3.5 h-3.5 text-amber-600" /> : <Volume2 className="w-3.5 h-3.5" />}
+                        <span>{speakingIndex === i ? "Lendo resposta..." : "Ouvir áudio"}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -2266,11 +2361,17 @@ function FerramentasContent() {
               )}
             </div>
             <div className="border-t border-slate-100 p-4 bg-slate-50/50">
-              <div className="flex gap-3 items-end">
+              {isListening && (
+                <div className="mb-2 p-2 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs flex items-center gap-2 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-rose-600 animate-ping" />
+                  <span className="font-bold">Ouvindo... Fale sua pergunta jurídica.</span>
+                </div>
+              )}
+              <div className="flex gap-2 items-end">
                 <textarea
                   rows={2}
                   className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm resize-none outline-none focus:ring-2 focus:ring-amber-300 focus:border-amber-300 transition-all"
-                  placeholder="Faça uma pergunta jurídica... (Enter para enviar, Shift+Enter para nova linha)"
+                  placeholder={isListening ? "Fale sua dúvida jurídica..." : "Faça uma pergunta jurídica... (Enter para enviar, ou use o microfone)"}
                   aria-label="Pergunta para o assistente jurídico"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
@@ -2281,12 +2382,29 @@ function FerramentasContent() {
                     }
                   }}
                 />
+                
+                {/* Botão de Microfone (Speech-to-Text) */}
+                <button
+                  type="button"
+                  onClick={toggleVoiceRecognition}
+                  title={isListening ? "Parar gravação" : "Falar por voz (Microfone)"}
+                  aria-label={isListening ? "Parar gravação por voz" : "Ativar microfone para ditar pergunta"}
+                  className={`p-3.5 rounded-xl border transition-all flex items-center justify-center ${
+                    isListening
+                      ? "bg-rose-500 text-white border-rose-600 shadow-md animate-pulse ring-2 ring-rose-300"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-amber-400 hover:text-amber-600 shadow-sm"
+                  }`}
+                >
+                  {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5 text-amber-500" />}
+                </button>
+
+                {/* Botão de Envio */}
                 <button
                   type="button"
                   onClick={enviarMensagem}
                   disabled={loadingChat || !chatInput.trim()}
                   aria-label="Enviar pergunta ao assistente jurídico"
-                  className="btn-primary px-5 py-3 self-end disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary px-5 py-3.5 self-end disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loadingChat
                     ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
