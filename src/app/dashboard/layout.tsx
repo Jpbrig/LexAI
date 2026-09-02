@@ -269,20 +269,37 @@ function DashboardLayoutContent({
         {/* Top Bar Header */}
         <header className="bg-white/80 backdrop-blur-md border-b border-slate-200/80 px-6 h-16 flex items-center justify-between flex-shrink-0 z-20">
           <div className="flex items-center gap-2">
-            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Plano Starter · 14 dias restantes
-            </span>
+            {session?.user?.platformRole === "PLATFORM_ADMIN" ? (
+              <span className="bg-amber-50 text-amber-800 border border-amber-300 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                <ShieldCheck className="w-4 h-4 text-amber-500" />
+                <span>Modo Admin Master · Plataforma SaaS LexAI</span>
+              </span>
+            ) : (
+              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Plano Escritório · {session?.role || "Advogado"}</span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/planos"
-              className="bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Fazer Upgrade
-            </Link>
+            {session?.user?.platformRole === "PLATFORM_ADMIN" ? (
+              <Link
+                href="/dashboard/admin"
+                className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5 border border-slate-800"
+              >
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                Painel Admin Master
+              </Link>
+            ) : (
+              <Link
+                href="/planos"
+                className="bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs px-4 py-2 rounded-xl shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Fazer Upgrade
+              </Link>
+            )}
           </div>
         </header>
 
