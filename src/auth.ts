@@ -69,6 +69,7 @@ async function ensurePersonalWorkspace(userId: string, name?: string | null) {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "Lt0TfZEg9ZyGwzlP8Qe2r+Koc17O+RIPQe1C8G2hrgg=",
   adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
