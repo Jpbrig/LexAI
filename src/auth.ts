@@ -70,7 +70,6 @@ async function ensurePersonalWorkspace(userId: string, name?: string | null) {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "Lt0TfZEg9ZyGwzlP8Qe2r+Koc17O+RIPQe1C8G2hrgg=",
-  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
     maxAge: SESSION_DURATION_MS / 1000,
@@ -90,86 +89,95 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       },
       async authorize(rawCredentials) {
-        const parsed = credentialsSchema.safeParse(rawCredentials);
-        if (!parsed.success) throw new InvalidCredentialsError();
+        try {
+          const parsed = credentialsSchema.safeParse(rawCredentials);
+          if (!parsed.success) return null;
 
-        const { email, password } = parsed.data;
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            passwordHash: true,
-            loginAttempts: true,
-            lockedUntil: true,
-          },
-        });
+          const { email, password } = parsed.data;
+          const user = await prisma.user.findUnique({
+            where: { email },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+              passwordHash: true,
+              loginAttempts: true,
+              lockedUntil: true,
+            },
+          });
 
-        if (!user || !user.passwordHash) throw new InvalidCredentialsError();
+          if (!user || !user.passwordHash) return null;
 
-        const now = new Date();
-        if (user.lockedUntil && user.lockedUntil > now) {
-          throw new AccountLockedError();
-        }
+          const now = new Date();
+          if (user.lockedUntil && user.lockedUntil > now) {
+            throw new AccountLockedError();
+          }
 
-        const passwordValid = await bcrypt.compare(password, user.passwordHash);
-        if (!passwordValid) {
-          const attempts = (user.loginAttempts ?? 0) + 1;
-          const lockedUntil = attempts >= MAX_LOGIN_ATTEMPTS
-            ? new Date(Date.now() + LOCK_DURATION_MS)
-            : null;
+          const passwordValid = await bcrypt.compare(password, user.passwordHash);
+          if (!passwordValid) {
+            const attempts = (user.loginAttempts ?? 0) + 1;
+            const lockedUntil = attempts >= MAX_LOGIN_ATTEMPTS
+              ? new Date(Date.now() + LOCK_DURATION_MS)
+              : null;
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                loginAttempts: attempts,
+                lockedUntil,
+              },
+            }).catch(() => null);
+
+            return null;
+          }
 
           await prisma.user.update({
             where: { id: user.id },
             data: {
-              loginAttempts: attempts,
-              lockedUntil,
+              loginAttempts: 0,
+              lockedUntil: null,
             },
-          });
+          }).catch(() => null);
 
-          throw new InvalidCredentialsError();
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            image: user.image,
+          };
+        } catch (err) {
+          if (err instanceof CredentialsSignin) throw err;
+          console.error("Erro na autorização do usuário:", err);
+          return null;
         }
-
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            loginAttempts: 0,
-            lockedUntil: null,
-          },
-        });
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      if (user) {
-        if (!user.id) return token;
-        const workspace = await ensurePersonalWorkspace(user.id, user.name);
-        const appSession = await prisma.appSession.create({
-          data: {
-            userId: user.id,
-            workspaceId: workspace.workspaceId,
-            expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
-          },
-        });
+      try {
+        if (user && user.id) {
+          const workspace = await ensurePersonalWorkspace(user.id, user.name);
+          const appSession = await prisma.appSession.create({
+            data: {
+              userId: user.id,
+              workspaceId: workspace.workspaceId,
+              expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
+            },
+          }).catch(() => null);
 
-        token.uid = user.id;
-        token.sid = appSession.id;
-        token.workspaceId = workspace.workspaceId;
-        token.role = workspace.role;
-      }
+          token.uid = user.id;
+          token.sid = appSession?.id || user.id;
+          token.workspaceId = workspace.workspaceId;
+          token.role = workspace.role;
+        }
 
-      if (trigger === "update" && session?.workspaceId) {
-        token.workspaceId = session.workspaceId;
+        if (trigger === "update" && session?.workspaceId) {
+          token.workspaceId = session.workspaceId;
+        }
+      } catch (err) {
+        console.error("Erro na callback JWT:", err);
       }
 
       return token;
