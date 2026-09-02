@@ -42,7 +42,7 @@ export const clienteSchema = z.object({
   email: z.string().trim().email().max(254).or(z.literal("")),
   telefone: z.string().trim().max(40),
   cidade: z.string().trim().max(120),
-  observacoes: z.string().max(20_000),
+  observacoes: z.string().max(20_000).optional().default(""),
 });
 
 export const agendaSchema = z.object({
