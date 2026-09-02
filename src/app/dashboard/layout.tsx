@@ -70,31 +70,36 @@ function DashboardLayoutContent({
           ${collapsed ? "w-20" : "w-64"}
         `}
       >
+        {/* Floating Toggle Collapse Button on border */}
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3.5 top-6 z-40 w-7 h-7 rounded-full bg-white border border-slate-200 shadow-md hover:bg-slate-50 text-slate-600 flex items-center justify-center transition-all hover:scale-105"
+          title={collapsed ? "Expandir Menu" : "Recolher Menu"}
+          aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
+          aria-expanded={!collapsed}
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
+
         <div className="overflow-y-auto flex-1">
-          {/* Header Sidebar & Toggle Button */}
-          <div className="flex items-center justify-between px-4 py-5 border-b border-slate-100 sticky top-0 bg-white z-10">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+          {/* Header Sidebar */}
+          <div className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-4"} py-5 border-b border-slate-100 sticky top-0 bg-white z-10`}>
+            <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden group">
+              <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm group-hover:bg-slate-800 transition-colors">
                 <Scale className="w-5 h-5 text-amber-400" />
               </div>
               {!collapsed && (
-                <span className="font-display text-xl font-bold text-slate-900 tracking-tight">
-                  Lex<span className="text-amber-500">AI</span>
-                </span>
+                <div className="flex flex-col leading-none">
+                  <span className="font-display text-xl font-bold text-slate-900 tracking-tight">
+                    Lex<span className="text-amber-500">AI</span>
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-0.5">
+                    Plataforma Jurídica
+                  </span>
+                </div>
               )}
-            </div>
-
-            {/* Toggle Collapse Button */}
-            <button
-              type="button"
-              onClick={() => setCollapsed(!collapsed)}
-              className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
-              title={collapsed ? "Expandir Menu" : "Recolher Menu"}
-              aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-              aria-expanded={!collapsed}
-            >
-              {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-            </button>
+            </Link>
           </div>
 
           {/* Navigation Links */}
