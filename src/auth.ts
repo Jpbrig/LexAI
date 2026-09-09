@@ -63,9 +63,26 @@ async function ensurePersonalWorkspace(userId: string, name?: string | null) {
   });
 }
 
+function resolveAuthSecret(): string {
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
+  if (secret) return secret;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[LexAI] AUTH_SECRET não configurado. Defina AUTH_SECRET nas variáveis de ambiente antes de iniciar em produção."
+    );
+  }
+
+  // Segredo determinístico apenas para desenvolvimento local — NUNCA usar em produção
+  console.warn(
+    "[LexAI] ⚠️  AUTH_SECRET não configurado. Usando segredo temporário de desenvolvimento. Defina AUTH_SECRET no .env para produção."
+  );
+  return "dev-only-insecure-secret-do-not-use-in-production";
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || "Lt0TfZEg9ZyGwzlP8Qe2r+Koc17O+RIPQe1C8G2hrgg=",
+  secret: resolveAuthSecret(),
   session: {
     strategy: "jwt",
     maxAge: SESSION_DURATION_MS / 1000,

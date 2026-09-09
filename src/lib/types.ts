@@ -136,5 +136,11 @@ export type GovQueryResponse = {
   tipo?: string;
   fonte?: string;
   dados?: unknown;
+  data?: Array<{
+    title: string;
+    source: string;
+    snippet: string;
+    url?: string;
+  }>;
   error?: string;
 };

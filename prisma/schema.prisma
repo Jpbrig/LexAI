@@ -400,6 +400,9 @@ enum WorkspaceRole {
   ADMIN
   MEMBER
   READ_ONLY
+  LAWYER
+  INTERN
+  SECRETARY
 }
 
 enum MembershipStatus {

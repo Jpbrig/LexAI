@@ -64,62 +64,79 @@ export default function ConfiguracoesPage() {
     isTitular?: boolean;
   };
 
-  const [membros, setMembros] = useState<MembroItem[]>([
-    {
-      id: "1",
-      nome: "Dr. João Pedro Brigagão (Você)",
-      email: "jpbrigagao@advocacia.com",
-      perfil: "ADMIN",
-      mfa: "🔐 Ativo (TOTP)",
-      status: "Ativo",
-      isTitular: true,
-    },
-    {
-      id: "2",
-      nome: "Dra. Amanda Castro",
-      email: "amanda.castro@advocacia.com",
-      perfil: "ASSOCIATE",
-      mfa: "🔐 Ativo (TOTP)",
-      status: "Ativo",
-    },
-    {
-      id: "3",
-      nome: "Lucas Mendes",
-      email: "lucas.mendes@advocacia.com",
-      perfil: "INTERN",
-      mfa: "⚠️ Pendente",
-      status: "Ativo",
-    },
-  ]);
+  const [membros, setMembros] = useState<MembroItem[]>([]);
 
-  function handleConvidarMembro(e: React.FormEvent) {
+  function carregarMembros() {
+    fetch("/api/workspace/members")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setMembros(data);
+      })
+      .catch((err) => console.error("Erro ao carregar membros", err));
+  }
+
+  async function handleConvidarMembro(e: React.FormEvent) {
     e.preventDefault();
     if (!inviteName || !inviteEmail) return;
 
     setInviteSending(true);
 
-    setTimeout(() => {
-      const novoMembro: MembroItem = {
-        id: `mem_${Date.now()}`,
-        nome: inviteName,
-        email: inviteEmail,
-        perfil: inviteRole,
-        mfa: "⚠️ Pendente",
-        status: "Ativo (Convite Enviado)",
-      };
+    try {
+      const res = await fetch("/api/workspace/members/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: inviteName,
+          email: inviteEmail,
+          role: inviteRole,
+        }),
+      });
 
-      setMembros((prev) => [...prev, novoMembro]);
-      setInviteSending(false);
-      setInviteSuccessMsg(`Convite enviado com sucesso para ${inviteEmail}!`);
+      const data = await res.json();
+      
+      if (!res.ok) {
+        alert(data.error || "Erro ao convidar membro.");
+        setInviteSending(false);
+        return;
+      }
 
+      setInviteSuccessMsg(`Convite criado! Link (fallback temporário): ${data.inviteLink}`);
+      
       setTimeout(() => {
         setInviteSuccessMsg("");
         setShowInviteModal(false);
         setInviteName("");
         setInviteEmail("");
         setInviteRole("ASSOCIATE");
-      }, 1500);
-    }, 500);
+        carregarMembros(); // recarrega a tabela
+      }, 3000);
+    } catch (err) {
+      console.error(err);
+      alert("Erro de conexão ao convidar membro.");
+    } finally {
+      setInviteSending(false);
+    }
+  }
+
+  async function handleRemoverMembro(id: string, nome: string) {
+    if (!confirm(`Tem certeza que deseja remover ${nome} do escritório?`)) return;
+    
+    try {
+      const res = await fetch(`/api/workspace/members/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        alert(data.error || "Erro ao remover membro.");
+        return;
+      }
+      
+      carregarMembros();
+    } catch (err) {
+      console.error(err);
+      alert("Erro de conexão ao remover membro.");
+    }
   }
 
   // Modal de Configuração de APIs Pagas State
@@ -173,6 +190,7 @@ export default function ConfiguracoesPage() {
 
 
   useEffect(() => {
+    carregarMembros();
     fetch("/api/user")
       .then((res) => res.json())
       .then((data) => {
@@ -848,13 +866,22 @@ export default function ConfiguracoesPage() {
                     {mem.isTitular ? (
                       <span className="text-slate-400">Titular</span>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => alert(`Permissões do membro ${mem.nome} salvas!`)}
-                        className="text-amber-600 hover:underline font-bold"
-                      >
-                        Editar
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => alert(`Edição de membro será implementada em breve.`)}
+                          className="text-amber-600 hover:underline font-bold"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverMembro(mem.id, mem.nome)}
+                          className="text-rose-600 hover:underline font-bold"
+                        >
+                          Remover
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>

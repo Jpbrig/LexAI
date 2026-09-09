@@ -1,72 +1,45 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getPlatformAdminContext, forbiddenResponse } from "@/lib/auth-guard";
 
 export async function GET() {
   try {
-    const session = await auth();
+    const admin = await getPlatformAdminContext();
+    if (!admin) return forbiddenResponse("Acesso restrito a administradores da plataforma.");
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-    }
-
-    const adminEmail = process.env.PLATFORM_ADMIN_EMAIL?.trim().toLowerCase();
-    const isEnvAdmin = adminEmail && session.user.email?.trim().toLowerCase() === adminEmail;
-    const isPlatformAdmin = isEnvAdmin || session.user.platformRole === "PLATFORM_ADMIN";
-
-    if (!isPlatformAdmin) {
-      return NextResponse.json(
-        { error: "Acesso negado. Apenas o Admin Master tem permissão." },
-        { status: 403 }
-      );
-    }
-
-    // Fetch workspaces with details
-    const workspaces = await prisma.workspace.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            oab: true,
-            createdAt: true,
-          },
-        },
-        memberships: {
-          select: {
-            id: true,
-            role: true,
-            status: true,
-            user: {
-              select: { id: true, name: true, email: true },
+    const [workspaces, totalUsers, totalProcessos, totalClientes] =
+      await Promise.all([
+        prisma.workspace.findMany({
+          orderBy: { createdAt: "desc" },
+          include: {
+            owner: {
+              select: { id: true, name: true, email: true, oab: true, createdAt: true },
             },
+            memberships: {
+              select: {
+                id: true,
+                role: true,
+                status: true,
+                user: { select: { id: true, name: true, email: true } },
+              },
+            },
+            _count: { select: { processos: true, clientes: true, alertas: true } },
+            subscription: true,
           },
-        },
-        _count: {
-          select: {
-            processos: true,
-            clientes: true,
-            alertas: true,
-          },
-        },
-        subscription: true,
-      },
-    });
+        }),
+        prisma.user.count(),
+        prisma.processo.count(),
+        prisma.cliente.count(),
+      ]);
 
-    const totalUsers = await prisma.user.count();
-    const totalProcessos = await prisma.processo.count();
-    const totalClientes = await prisma.cliente.count();
-
-    // Calculate approximate MRR
+    // MRR estimado por plano
     let mrr = 0;
-    workspaces.forEach((w) => {
+    for (const w of workspaces) {
       const plano = w.plano || w.subscription?.plan || "FREE";
       if (plano === "STARTER") mrr += 197;
       else if (plano === "PROFESSIONAL") mrr += 397;
       else if (plano === "ESCRITORIO") mrr += 797;
-    });
+    }
 
     return NextResponse.json({
       totalWorkspaces: workspaces.length,
