@@ -28,7 +28,16 @@ export type AuthContext = {
  */
 export async function getAuthContext(): Promise<AuthContext | null> {
   const session = await auth();
-  const userId = session?.user?.id;
+  let userId = session?.user?.id ?? null;
+
+  if (!userId && session?.user?.email) {
+    const userByEmail = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    userId = userByEmail?.id ?? null;
+  }
 
   if (!userId) return null;
 

@@ -203,17 +203,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (!token.uid || !token.sid || !token.workspaceId) {
+      if (!token.uid && !token.sub) {
         return session;
       }
 
       if (session.user) {
-        session.user.id = String(token.uid);
+        session.user.id = String(token.uid ?? token.sub ?? session.user.id ?? "");
         session.user.platformRole = (token.platformRole as "USER" | "PLATFORM_ADMIN") || "USER";
       }
-      session.sessionId = String(token.sid);
-      session.workspaceId = String(token.workspaceId);
-      session.role = token.role as NonNullable<typeof session.role>;
+
+      if (token.sid) {
+        session.sessionId = String(token.sid);
+      }
+      if (token.workspaceId) {
+        session.workspaceId = String(token.workspaceId);
+      }
+      if (token.role) {
+        session.role = token.role as NonNullable<typeof session.role>;
+      }
+
       return session;
     },
     // O Proxy aplica redirecionamentos/401 por tipo de rota; não deixar o
