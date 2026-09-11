@@ -1,7 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Calendar, DollarSign, CheckCircle2 } from "lucide-react";
+import { Calculator, Calendar, DollarSign } from "lucide-react";
+
+function toDateInputValue(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+}
+
+function parseDateInput(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
+
+function addBusinessDays(startDate: Date, days: number) {
+  const nextDate = new Date(startDate);
+  let remainingDays = Math.max(0, days);
+
+  while (remainingDays > 0) {
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    if (nextDate.getDay() !== 0 && nextDate.getDay() !== 6) {
+      remainingDays -= 1;
+    }
+  }
+
+  return nextDate;
+}
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
 
 export default function TabCalculadoras() {
   const [selectedCalc, setSelectedCalc] = useState<string>("trabalhista");
@@ -16,6 +48,17 @@ export default function TabCalculadoras() {
   const [debitoIndice, setDebitoIndice] = useState<string>("tjsp");
   const [aplicarMulta523, setAplicarMulta523] = useState<boolean>(true);
   const [aplicarHonorarios523, setAplicarHonorarios523] = useState<boolean>(true);
+
+  const [prazoDataBase, setPrazoDataBase] = useState<string>(toDateInputValue(new Date()));
+  const [prazoDias, setPrazoDias] = useState<number>(15);
+  const [prazoAdicional, setPrazoAdicional] = useState<number>(0);
+  const [prazoTipo, setPrazoTipo] = useState<string>("judicial");
+  const [prazoAlertaDias, setPrazoAlertaDias] = useState<number>(3);
+
+  const [valorCausa, setValorCausa] = useState<string>("150000");
+  const [percentualHonorarios, setPercentualHonorarios] = useState<number>(20);
+  const [taxaJurosHonorarios, setTaxaJurosHonorarios] = useState<number>(1);
+  const [mesesHonorarios, setMesesHonorarios] = useState<number>(6);
 
   // Cálculos Trabalhistas Mock
   const salarioNum = parseFloat(salario) || 0;
@@ -35,13 +78,23 @@ export default function TabCalculadoras() {
   const vb = parseFloat(valorBase) || 0;
   const tj = parseFloat(taxaJuros) || 0;
   const m = parseFloat(meses) || 0;
-  
+
   const jurosValor = vb * (tj / 100) * m;
   const correcaoMonetaria = vb * 0.05; // Fixo 5% para exemplo
   const subtotal = vb + jurosValor + correcaoMonetaria;
   const multa523 = aplicarMulta523 ? subtotal * 0.1 : 0;
   const honorarios523 = aplicarHonorarios523 ? subtotal * 0.1 : 0;
   const totalDebito = subtotal + multa523 + honorarios523;
+
+  const prazoTotalDias = Math.max(0, prazoDias + prazoAdicional);
+  const dataBasePrazo = parseDateInput(prazoDataBase);
+  const vencimentoPrazo = addBusinessDays(dataBasePrazo, prazoTotalDias);
+  const dataAlertaPrazo = addBusinessDays(vencimentoPrazo, -Math.max(0, prazoAlertaDias));
+
+  const valorCausaNum = parseFloat(valorCausa) || 0;
+  const honorariosBase = valorCausaNum * (percentualHonorarios / 100);
+  const jurosHonorarios = honorariosBase * (taxaJurosHonorarios / 100) * (mesesHonorarios / 12);
+  const totalHonorarios = honorariosBase + jurosHonorarios;
 
   return (
     <div className="space-y-6">
@@ -248,11 +301,197 @@ export default function TabCalculadoras() {
         </div>
       )}
 
-      {(selectedCalc === "prazos" || selectedCalc === "honorarios") && (
-        <div className="card text-center p-12">
-          <CheckCircle2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="font-bold text-slate-700 mb-2">Módulo em Desenvolvimento</h3>
-          <p className="text-sm text-slate-500">Esta calculadora estará disponível na próxima atualização do sistema.</p>
+      {selectedCalc === "prazos" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-4">
+            <div className="card space-y-4">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-indigo-500" />
+                Dados do Prazo
+              </h3>
+
+              <div>
+                <label className="label">Data de Início</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={prazoDataBase}
+                  onChange={(e) => setPrazoDataBase(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="label">Prazo Original (dias)</label>
+                <input
+                  type="number"
+                  className="input"
+                  min={0}
+                  value={prazoDias}
+                  onChange={(e) => setPrazoDias(Number(e.target.value) || 0)}
+                />
+              </div>
+
+              <div>
+                <label className="label">Prazo Adicional (dias)</label>
+                <input
+                  type="number"
+                  className="input"
+                  min={0}
+                  value={prazoAdicional}
+                  onChange={(e) => setPrazoAdicional(Number(e.target.value) || 0)}
+                />
+              </div>
+
+              <div>
+                <label className="label">Tipo de Prazo</label>
+                <select
+                  className="input"
+                  value={prazoTipo}
+                  onChange={(e) => setPrazoTipo(e.target.value)}
+                >
+                  <option value="judicial">Judicial</option>
+                  <option value="administrativo">Administrativo</option>
+                  <option value="recurso">Recurso</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Dias para alerta antecipado</label>
+                <input
+                  type="number"
+                  className="input"
+                  min={0}
+                  value={prazoAlertaDias}
+                  onChange={(e) => setPrazoAlertaDias(Number(e.target.value) || 0)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2">
+            <div className="card bg-slate-50 border border-slate-200">
+              <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-amber-500" />
+                Resultado do Prazo Processual
+              </h3>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-slate-200">
+                  <span className="text-sm text-slate-600">Tipo</span>
+                  <span className="text-sm font-bold text-slate-900">
+                    {prazoTipo === "judicial" ? "Judicial" : prazoTipo === "administrativo" ? "Administrativo" : "Recurso"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-200">
+                  <span className="text-sm text-slate-600">Prazo total</span>
+                  <span className="text-sm font-bold text-slate-900">{prazoTotalDias} dias</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-200">
+                  <span className="text-sm text-slate-600">Data limite</span>
+                  <span className="text-sm font-bold text-slate-900">{formatDate(vencimentoPrazo)}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-200">
+                  <span className="text-sm text-slate-600">Alerta antecipado</span>
+                  <span className="text-sm font-bold text-amber-700">{formatDate(dataAlertaPrazo)}</span>
+                </div>
+
+                <div className="mt-4 p-4 bg-amber-100 rounded-xl">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-amber-900">Status</span>
+                    <span className="text-xl font-black text-amber-700">
+                      {prazoAlertaDias > 0 ? "Alerta ativo" : "Sem alerta"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedCalc === "honorarios" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-4">
+            <div className="card space-y-4">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-500" />
+                Dados dos Honorários
+              </h3>
+
+              <div>
+                <label className="label">Valor da Causa (R$)</label>
+                <input
+                  type="number"
+                  className="input"
+                  value={valorCausa}
+                  onChange={(e) => setValorCausa(e.target.value)}
+                  placeholder="150000"
+                />
+              </div>
+
+              <div>
+                <label className="label">Percentual de Honorários (%)</label>
+                <input
+                  type="number"
+                  className="input"
+                  min={0}
+                  step={0.1}
+                  value={percentualHonorarios}
+                  onChange={(e) => setPercentualHonorarios(Number(e.target.value) || 0)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Juros (% a.m.)</label>
+                  <input
+                    type="number"
+                    className="input"
+                    min={0}
+                    step={0.1}
+                    value={taxaJurosHonorarios}
+                    onChange={(e) => setTaxaJurosHonorarios(Number(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Meses</label>
+                  <input
+                    type="number"
+                    className="input"
+                    min={0}
+                    value={mesesHonorarios}
+                    onChange={(e) => setMesesHonorarios(Number(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2">
+            <div className="card bg-slate-50 border border-slate-200">
+              <h3 className="font-bold text-slate-900 mb-4">Demonstrativo de Honorários Sucumbenciais</h3>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-slate-200">
+                  <span className="text-sm text-slate-600">Valor da causa</span>
+                  <span className="text-sm font-bold text-slate-900">R$ {valorCausaNum.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-200">
+                  <span className="text-sm text-slate-600">Honorários base</span>
+                  <span className="text-sm font-bold text-emerald-700">R$ {honorariosBase.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-200">
+                  <span className="text-sm text-slate-600">Juros acumulados</span>
+                  <span className="text-sm font-bold text-emerald-700">R$ {jurosHonorarios.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </div>
+
+                <div className="mt-4 p-4 bg-emerald-100 rounded-xl flex justify-between items-center">
+                  <span className="font-bold text-emerald-900">Total estimado</span>
+                  <span className="text-xl font-black text-emerald-700">R$ {totalHonorarios.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
