@@ -100,6 +100,18 @@ export default function DashboardPage() {
     async function carregarDashboard() {
       try {
         const response = await fetch("/api/dashboard", { signal: controller.signal });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            if (typeof window !== "undefined") {
+              window.location.assign(`/auth/signin?callbackUrl=${encodeURIComponent("/dashboard")}`);
+            }
+            return;
+          }
+
+          throw new Error(`Falha ao carregar dashboard: ${response.status}`);
+        }
+
         const responseData = (await response.json()) as DashboardResponse;
         setData(responseData);
       } catch (error) {
