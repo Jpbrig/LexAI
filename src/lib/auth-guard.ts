@@ -54,15 +54,15 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     },
   });
 
-  if (!activeMembership) return null;
+  const workspaceId = session?.workspaceId ?? activeMembership?.workspaceId;
+  const requestedSessionId = session?.sessionId ?? userId;
 
-  const workspaceId = session?.workspaceId ?? activeMembership.workspaceId;
-  const sessionId = session?.sessionId ?? null;
+  if (!workspaceId) return null;
 
-  const activeSession = sessionId
+  const activeSession = requestedSessionId
     ? await prisma.appSession.findFirst({
         where: {
-          id: sessionId,
+          id: requestedSessionId,
           userId,
           workspaceId,
           revokedAt: null,
@@ -74,22 +74,7 @@ export async function getAuthContext(): Promise<AuthContext | null> {
           workspaceId: true,
         },
       })
-    : await prisma.appSession.findFirst({
-        where: {
-          userId,
-          workspaceId,
-          revokedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          userId: true,
-          workspaceId: true,
-        },
-      });
-
-  if (!activeSession) return null;
+    : null;
 
   const [membership, user] = await Promise.all([
     prisma.membership.findUnique({
@@ -110,13 +95,22 @@ export async function getAuthContext(): Promise<AuthContext | null> {
     }),
   ]);
 
-  if (!membership || membership.status !== "ACTIVE") return null;
+  const effectiveRole = (session?.role as WorkspaceRole | undefined) ?? membership?.role ?? activeMembership?.role ?? "MEMBER";
+  const effectiveMembershipStatus = membership?.status ?? activeMembership?.status ?? "ACTIVE";
+
+  if (membership && membership.status !== "ACTIVE") {
+    return null;
+  }
+
+  if (!membership && activeMembership?.status !== "ACTIVE" && effectiveMembershipStatus !== "ACTIVE") {
+    return null;
+  }
 
   return {
-    userId: activeSession.userId,
-    workspaceId: activeSession.workspaceId,
-    sessionId: activeSession.id,
-    role: membership.role as WorkspaceRole,
+    userId,
+    workspaceId,
+    sessionId: activeSession?.id ?? requestedSessionId,
+    role: effectiveRole as WorkspaceRole,
     isPlatformAdmin: user?.platformRole === "PLATFORM_ADMIN",
   };
 }
@@ -130,7 +124,17 @@ export async function getPlatformAdminContext(): Promise<{
   isPlatformAdmin: true;
 } | null> {
   const session = await auth();
-  const userId = session?.user?.id;
+  let userId = session?.user?.id ?? null;
+
+  if (!userId && session?.user?.email) {
+    const userByEmail = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    userId = userByEmail?.id ?? null;
+  }
+
   if (!userId) return null;
 
   const user = await prisma.user.findUnique({
