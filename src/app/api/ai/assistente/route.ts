@@ -259,8 +259,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const updatedMessages: SessionMemory["messages"] = [
+      ...sessionMemory.messages,
+      { role: "user", text: parsed.data.text.trim() },
+      { role: "assistant", text: resposta.trim() },
+    ].slice(-MAX_MEMORY_MESSAGES) as SessionMemory["messages"];
+
     const updatedMemory: SessionMemory = {
-      messages: [...sessionMemory.messages, { role: "user", text: parsed.data.text.trim() }, { role: "assistant", text: resposta.trim() }].slice(-MAX_MEMORY_MESSAGES),
+      messages: updatedMessages,
     };
 
     await prisma.appSession.update({
