@@ -55,17 +55,8 @@ function isAuthPage(pathname: string) {
 
 export default auth((request) => {
   const { pathname, search } = request.nextUrl;
-  const session = request.auth as {
-    user?: { id?: string | null; email?: string | null; platformRole?: string };
-    sessionId?: string | null;
-    workspaceId?: string | null;
-  } | undefined;
-  const user = session?.user;
-  const hasSession = Boolean(
-    user?.id &&
-    session?.sessionId &&
-    session?.workspaceId
-  );
+  const user = request.auth?.user as { id?: string | null; email?: string | null; platformRole?: string } | undefined;
+  const hasSession = Boolean(user);
 
   if ((isProtectedPage(pathname) || isPrivateApi(pathname)) && !hasSession) {
     if (isPrivateApi(pathname)) {

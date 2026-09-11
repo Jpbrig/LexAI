@@ -29,33 +29,56 @@ export type AuthContext = {
 export async function getAuthContext(): Promise<AuthContext | null> {
   const session = await auth();
   const userId = session?.user?.id;
-  const sessionId = session?.sessionId;
-  const workspaceId = session?.workspaceId;
 
-  if (!userId || !sessionId || !workspaceId) return null;
+  if (!userId) return null;
 
-  const activeSession = await prisma.appSession.findFirst({
+  const activeMembership = await prisma.membership.findFirst({
     where: {
-      id: sessionId,
       userId,
-      workspaceId,
-      revokedAt: null,
-      expiresAt: { gt: new Date() },
-      user: {
-        memberships: {
-          some: {
-            workspaceId,
-            status: "ACTIVE",
-          },
-        },
-      },
+      status: "ACTIVE",
     },
+    orderBy: { createdAt: "asc" },
     select: {
-      id: true,
-      userId: true,
       workspaceId: true,
+      role: true,
+      status: true,
     },
   });
+
+  if (!activeMembership) return null;
+
+  const workspaceId = session?.workspaceId ?? activeMembership.workspaceId;
+  const sessionId = session?.sessionId ?? null;
+
+  const activeSession = sessionId
+    ? await prisma.appSession.findFirst({
+        where: {
+          id: sessionId,
+          userId,
+          workspaceId,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: {
+          id: true,
+          userId: true,
+          workspaceId: true,
+        },
+      })
+    : await prisma.appSession.findFirst({
+        where: {
+          userId,
+          workspaceId,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          userId: true,
+          workspaceId: true,
+        },
+      });
 
   if (!activeSession) return null;
 
