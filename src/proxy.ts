@@ -58,13 +58,7 @@ export default auth((request) => {
   const user = request.auth?.user as { id?: string | null; email?: string | null; platformRole?: string } | undefined;
   const hasSession = Boolean(user);
 
-  if ((isProtectedPage(pathname) || isPrivateApi(pathname)) && !hasSession) {
-    if (isPrivateApi(pathname)) {
-      return addSecurityHeaders(
-        NextResponse.json({ error: "Não autenticado." }, { status: 401 }),
-      );
-    }
-
+  if (isProtectedPage(pathname) && !hasSession) {
     const loginUrl = new URL("/auth/signin", request.url);
     const callbackUrl = `${pathname}${search}`;
     loginUrl.searchParams.set("callbackUrl", callbackUrl);
