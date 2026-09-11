@@ -84,9 +84,9 @@ export default function ProcessosPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-primary">Meus Processos</h1>
+          <h1 className="font-display text-2xl font-bold text-primary">Meus processos</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {processos.length} processos monitorados no Supabase
+            Você tem {processos.length} processo{processos.length === 1 ? "" : "s"} em acompanhamento.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -97,7 +97,7 @@ export default function ProcessosPage() {
             aria-label="Atualizar processos"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
+            Atualizar lista
           </button>
           <Link href="/dashboard/processos/novo" className="btn-accent text-sm">
             <Plus className="w-4 h-4" />
@@ -112,7 +112,7 @@ export default function ProcessosPage() {
           <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 pointer-events-none z-10" />
           <input
             type="text"
-            placeholder="Buscar por número CNJ, classe ou tribunal..."
+            placeholder="Buscar por CNJ, classe ou tribunal..."
             aria-label="Buscar processos por número CNJ, classe ou tribunal"
             className="input text-sm"
             style={{ paddingLeft: "2.75rem" }}
@@ -148,12 +148,12 @@ export default function ProcessosPage() {
           {filtered.length === 0 ? (
             <div className="card text-center py-16">
               <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-foreground font-medium">Nenhum processo encontrado</p>
+              <p className="text-foreground font-medium">Ainda não há processos aqui.</p>
               <p className="text-muted-foreground text-sm mt-1">
-                Tente ajustar a busca ou adicione um novo processo.
+                Comece adicionando o primeiro processo ou ajuste a busca para encontrar o que você procura.
               </p>
               <Link href="/dashboard/processos/novo" className="btn-accent mt-4 inline-flex">
-                <Plus className="w-4 h-4" /> Adicionar processo
+                <Plus className="w-4 h-4" /> Adicionar primeiro processo
               </Link>
             </div>
           ) : (

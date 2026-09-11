@@ -75,13 +75,13 @@ export function RecentMovements({
           id="recent-movements-title"
           className="text-lg font-semibold text-foreground"
         >
-          Movimentações Recentes
+          Últimas movimentações
         </h2>
         <Link
           href="/dashboard/processos"
           className="flex shrink-0 items-center gap-1 text-sm text-primary transition-colors hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
         >
-          Ver todas <ArrowRight className="h-3 w-3" aria-hidden="true" />
+          Ver tudo <ArrowRight className="h-3 w-3" aria-hidden="true" />
         </Link>
       </div>
 
@@ -98,9 +98,12 @@ export function RecentMovements({
             ))}
           </>
         ) : movimentacoes.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            Nenhuma movimentação registrada no banco.
-          </p>
+          <div className="rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
+            <p className="text-sm font-medium text-foreground">Ainda não há movimentações por aqui.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Quando surgir algo novo, você verá os principais acontecimentos neste painel.
+            </p>
+          </div>
         ) : (
           movimentacoes.slice(0, 5).map((mov) => (
             <motion.div

@@ -45,10 +45,10 @@ export default function TabProcuracao() {
       if (res.ok && data.sucesso) {
         setTextoProcuracao(data.texto);
       } else {
-        setErroProcuracao(data.error || "Erro ao gerar a procuração.");
+        setErroProcuracao(data.error || "Não consegui gerar a procuração agora. Revise os dados informados e tente novamente.");
       }
     } catch {
-      setErroProcuracao("Erro de conexão com o servidor.");
+      setErroProcuracao("Não consegui conectar com o servidor no momento. Tente novamente em alguns instantes.");
     } finally {
       setLoadingProcuracao(false);
     }

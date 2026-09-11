@@ -61,10 +61,10 @@ export default function SignInPage() {
 
           <h2 className="font-display text-4xl font-bold text-white leading-tight mb-4">
             Seu escritório.<br />
-            <span className="text-amber-400">Mais inteligente.</span>
+            <span className="text-amber-400">Mais organizado.</span>
           </h2>
           <p className="text-slate-400 text-base leading-relaxed max-w-sm">
-            Monitore processos automaticamente via DataJud e deixe a IA interpretar as decisões por você.
+            Acompanhe processos, priorize tarefas e deixe a IA ajudar com clareza, rapidez e menos atrito no dia a dia.
           </p>
         </div>
 
@@ -96,9 +96,9 @@ export default function SignInPage() {
           </div>
 
           <div>
-            <h1 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Bem-vindo de volta</h1>
+            <h1 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Que bom ver você de novo</h1>
             <p className="text-slate-500 text-xs mt-1">
-              Não tem conta?{" "}
+              Ainda não tem conta?{" "}
               <Link href="/auth/signup" className="text-amber-600 font-bold hover:underline">
                 Criar conta grátis
               </Link>
@@ -106,7 +106,7 @@ export default function SignInPage() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            Entre com o e-mail e a senha cadastrados no LexAI.
+            Entre com seu e-mail e senha para acessar o seu espaço no LexAI.
           </div>
 
           <div className="relative">

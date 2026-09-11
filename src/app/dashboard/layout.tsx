@@ -259,7 +259,7 @@ function DashboardLayoutContent({
             title={collapsed ? "Sair" : undefined}
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
-            {!collapsed && <span>Sair da Conta</span>}
+            {!collapsed && <span>Sair do LexAI</span>}
           </button>
         </div>
       </aside>

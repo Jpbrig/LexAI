@@ -14,19 +14,28 @@ export default function TabConsultas() {
 
   const buscarDadosGov = async () => {
     if (!consultaTermo.trim()) return;
-    
+
     setLoadingGov(true);
     setErrorGov("");
     setResultadoGov(null);
-    
+
     try {
-      const res = await fetch(`/api/gov-query?termo=${encodeURIComponent(consultaTermo)}`);
+      const res = await fetch("/api/gov-query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: selectedConsulta,
+          termo: consultaTermo,
+        }),
+      });
       const data = await res.json();
-      
+
       if (!res.ok) {
         throw new Error(data.error || "Erro na consulta");
       }
-      
+
       setResultadoGov(data);
     } catch (err: unknown) {
       setErrorGov(err instanceof Error ? err.message : "Erro desconhecido");
@@ -118,33 +127,60 @@ export default function TabConsultas() {
         <div className="space-y-4">
           <h3 className="font-bold text-slate-900 text-lg flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            Resultados Encontrados (Mock)
+            Resultados Encontrados
           </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {resultadoGov.data?.map((item, idx: number) => (
-              <div key={idx} className="card bg-white border border-slate-200 space-y-2">
-                <div className="flex items-start justify-between">
-                  <h4 className="font-bold text-slate-800">{item.title}</h4>
-                  <span className="text-[10px] font-bold px-2 py-1 rounded bg-blue-100 text-blue-800 uppercase">
-                    {item.source}
-                  </span>
-                </div>
-                <p className="text-sm text-slate-600 line-clamp-3">{item.snippet}</p>
-                {item.url && (
-                  <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-bold mt-2 inline-block">
-                    Acessar Fonte Oficial ↗
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
 
-          <div className="card bg-amber-50 border-amber-200">
-            <p className="text-sm text-amber-800">
-              <strong>Nota:</strong> Como a integração real com Serpro/Jusbrasil requer chaves pagas, este é um retorno simulado. Em produção, você verá os processos, CNPJs e certidões reais aqui.
-            </p>
-          </div>
+          {(() => {
+            const resultados = Array.isArray(resultadoGov.data)
+              ? resultadoGov.data
+              : Array.isArray(resultadoGov.dados)
+                ? resultadoGov.dados as Array<{
+                    title?: string;
+                    source?: string;
+                    snippet?: string;
+                    url?: string;
+                  }>
+                : resultadoGov.dados
+                  ? [{
+                      title: resultadoGov.fonte || resultadoGov.tipo || "Resultado",
+                      source: resultadoGov.fonte || "Fonte",
+                      snippet: typeof resultadoGov.dados === "string"
+                        ? resultadoGov.dados
+                        : JSON.stringify(resultadoGov.dados, null, 2),
+                    }]
+                  : [];
+
+            return (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {resultados.map((item, idx: number) => (
+                    <div key={idx} className="card bg-white border border-slate-200 space-y-2">
+                      <div className="flex items-start justify-between">
+                        <h4 className="font-bold text-slate-800">{item.title || "Resultado"}</h4>
+                        <span className="text-[10px] font-bold px-2 py-1 rounded bg-blue-100 text-blue-800 uppercase">
+                          {item.source || "Fonte"}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 whitespace-pre-wrap">{item.snippet || "Sem descrição disponível."}</p>
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-bold mt-2 inline-block">
+                          Acessar Fonte Oficial ↗
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {resultadoGov.fonte && (
+                  <div className="card bg-amber-50 border-amber-200">
+                    <p className="text-sm text-amber-800">
+                      <strong>Fonte:</strong> {resultadoGov.fonte}
+                    </p>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
     </div>

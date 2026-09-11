@@ -25,6 +25,7 @@ const envSchema = z.object({
   CLICSIGN_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
   JUSBRASIL_API_URL: z.string().url().optional(),
   JUSBRASIL_API_KEY: optionalSecret,
+  SERPRO_API_URL: z.string().url().optional(),
   SERPRO_CLIENT_ID: optionalSecret,
   SERPRO_CLIENT_SECRET: optionalSecret,
   SENATRAN_API_URL: z.string().url().optional(),

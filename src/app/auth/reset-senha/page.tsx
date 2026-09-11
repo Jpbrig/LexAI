@@ -72,13 +72,13 @@ function ResetPasswordForm() {
               <CheckCircle className="w-5 h-5 text-emerald-600" />
               Senha redefinida
             </div>
-            <p className="text-xs text-emerald-700">Suas sessões anteriores foram encerradas. Redirecionando para o login.</p>
+            <p className="text-xs text-emerald-700">Sua senha foi atualizada com sucesso. Você será levado para o login em instantes.</p>
           </div>
         ) : (
           <>
             <div>
               <h1 className="font-display text-2xl font-bold text-slate-900 tracking-tight">Criar nova senha</h1>
-              <p className="text-slate-500 text-xs mt-1">Use pelo menos 8 caracteres e não reutilize uma senha comprometida.</p>
+              <p className="text-slate-500 text-xs mt-1">Escolha uma senha forte e diferente da que você já usa em outros serviços.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">

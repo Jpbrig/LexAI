@@ -69,6 +69,7 @@ export type DashboardResponse = {
     movimentacoesHoje?: number;
     totalAlertas?: number;
   };
+  onboardingState?: Record<string, boolean>;
   processos?: ProcessoListItem[];
   recentMovimentacoes?: DashboardMovimentacao[];
 };

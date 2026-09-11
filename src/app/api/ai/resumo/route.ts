@@ -16,13 +16,16 @@ export async function POST(req: NextRequest) {
 
     const parsed = requestSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: "Texto inválido para análise." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Preciso de um texto válido para gerar o resumo com a IA." },
+        { status: 400 },
+      );
     }
 
     const apiKey = requireServerSecret("GEMINI_API_KEY") || requireServerSecret("OPENAI_API_KEY");
     if (!apiKey) {
       return NextResponse.json(
-        { error: "A integração de IA está temporariamente indisponível." },
+        { error: "A IA do LexAI está sendo configurada no momento. Volte em alguns minutos." },
         { status: 503 },
       );
     }
@@ -34,11 +37,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ resumo });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      return NextResponse.json({ error: "A análise de IA expirou. Tente novamente." }, { status: 504 });
+      return NextResponse.json(
+        { error: "A IA demorou mais do que o esperado. Tente novamente com um texto menor." },
+        { status: 504 },
+      );
     }
 
     console.error("Erro ao gerar resumo com IA:", error);
-    return NextResponse.json({ error: "Erro ao processar com IA." }, { status: 502 });
+    return NextResponse.json(
+      { error: "Não consegui gerar o resumo agora. Tente novamente em alguns instantes." },
+      { status: 502 },
+    );
   }
 }
 

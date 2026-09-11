@@ -76,11 +76,11 @@ export default function SignUpPage() {
           </div>
 
           <h2 className="font-display text-4xl font-bold text-white leading-tight mb-4">
-            Comece grátis.<br />
-            <span className="text-amber-400">Sem compromisso.</span>
+            Comece com o pé direito.<br />
+            <span className="text-amber-400">Sem complicação.</span>
           </h2>
           <p className="text-slate-400 text-base leading-relaxed max-w-sm mb-10">
-            14 dias de acesso completo para você ver como o LexAI transforma sua advocacia.
+            Experimente o LexAI por 14 dias e veja como ele pode deixar seu escritório mais leve, organizado e eficiente.
           </p>
 
           <div className="space-y-3">
@@ -134,7 +134,7 @@ export default function SignUpPage() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            Crie sua conta com um e-mail profissional e uma senha segura.
+            Crie sua conta com um e-mail profissional e escolha uma senha segura para começar.
           </div>
 
           <div className="relative">

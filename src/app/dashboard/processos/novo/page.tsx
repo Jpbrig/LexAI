@@ -34,7 +34,7 @@ export default function NovoProcessoPage() {
 
   async function buscarCNJ() {
     if (!numeroCnj || numeroCnj.replace(/\D/g, "").length < 15) {
-      setError("Informe o número CNJ completo.");
+      setError("Para buscar pelo CNJ, preciso do número completo do processo.");
       return;
     }
     setLoading(true);
@@ -56,10 +56,10 @@ export default function NovoProcessoPage() {
         });
         if (data.tribunal) setTribunal(data.tribunal);
       } else {
-        setError(data.error || "Não foi possível localizar o processo no DataJud.");
+        setError(data.error || "Não encontrei esse processo na base pública do DataJud. Verifique o número e tente novamente.");
       }
     } catch {
-      setError("Erro ao buscar no DataJud.");
+      setError("Não consegui consultar o DataJud agora. Tente novamente em alguns instantes.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export default function NovoProcessoPage() {
 
   async function buscarCPF() {
     if (!cpfNome || cpfNome.trim().length < 3) {
-      setError("Digite o CPF ou Nome do cliente.");
+      setError("Para buscar por cliente, me diga o CPF ou o nome da parte.");
       return;
     }
     setLoading(true);
@@ -84,10 +84,10 @@ export default function NovoProcessoPage() {
       if (res.ok && data.processos) {
         setResultadosCPF(data.processos);
       } else {
-        setError(data.error || "Nenhum processo encontrado para este CPF.");
+        setError(data.error || "Não encontrei processos para esse cliente na busca atual. Tente outro termo ou confira os dados informados.");
       }
     } catch {
-      setError("Erro ao realizar busca por CPF no Jusbrasil.");
+      setError("Não consegui buscar processos no Jusbrasil agora. Tente novamente em alguns minutos.");
     } finally {
       setLoading(false);
     }
@@ -112,7 +112,7 @@ export default function NovoProcessoPage() {
         router.push("/dashboard/processos");
       }
     } catch {
-      setError("Erro ao cadastrar processo.");
+      setError("Não consegui salvar esse processo no momento. Tente novamente.");
     } finally {
       setSaving(false);
     }

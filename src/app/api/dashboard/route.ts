@@ -12,7 +12,7 @@ export async function GET() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const [totalProcessos, processosAtivos, movimentacoesHoje, totalAlertas, movimentacoesRecentes] = await Promise.all([
+    const [totalProcessos, processosAtivos, movimentacoesHoje, totalAlertas, movimentacoesRecentes, appSession] = await Promise.all([
       prisma.processo.count({
         where: { workspaceId: context.workspaceId },
       }),
@@ -38,6 +38,10 @@ export async function GET() {
           },
         },
       }),
+      prisma.appSession.findUnique({
+        where: { id: context.sessionId },
+        select: { onboardingState: true },
+      }),
     ]);
 
     const user = await prisma.user.findUnique({
@@ -59,6 +63,11 @@ export async function GET() {
       urgente: mov.tipo === "Sentença" || mov.tipo === "Acórdão",
     }));
 
+    const onboardingState =
+      typeof appSession?.onboardingState === "object" && appSession.onboardingState !== null
+        ? (appSession.onboardingState as Record<string, boolean>)
+        : {};
+
     return NextResponse.json({
       user,
       stats: {
@@ -67,6 +76,7 @@ export async function GET() {
         movimentacoesHoje,
         totalAlertas,
       },
+      onboardingState,
       recentMovimentacoes: formattedMovimentacoes,
     });
   } catch (error) {

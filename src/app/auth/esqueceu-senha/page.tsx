@@ -53,7 +53,7 @@ export default function EsqueceuSenhaPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-slate-900 tracking-tight">Recuperar senha</h1>
           <p className="text-slate-500 text-xs mt-1">
-            Digite seu e-mail e enviaremos um link seguro para redefinir sua senha.
+            Digite seu e-mail e enviaremos um link seguro para você definir uma nova senha.
           </p>
         </div>
 
@@ -64,7 +64,7 @@ export default function EsqueceuSenhaPage() {
               Verifique seu e-mail
             </div>
             <p className="text-xs leading-relaxed text-emerald-700">
-              Se existir uma conta com este endereço, enviaremos as instruções de recuperação. Verifique também a pasta de spam.
+              Se existir uma conta com este endereço, enviaremos as instruções de recuperação em seguida. Também vale conferir a pasta de spam.
             </p>
             <Link href="/auth/signin" className="inline-block text-xs font-bold text-slate-900 hover:underline pt-2">
               Voltar para o login

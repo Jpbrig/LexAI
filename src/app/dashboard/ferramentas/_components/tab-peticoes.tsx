@@ -41,10 +41,10 @@ export default function TabPeticoes() {
       if (res.ok && data.sucesso) {
         setTextoPeticao(data.texto);
       } else {
-        setErroPeticao(data.error || "Erro ao gerar a petição.");
+        setErroPeticao(data.error || "Não consegui gerar a petição agora. Revise os dados e tente novamente.");
       }
     } catch {
-      setErroPeticao("Erro de conexão com o servidor.");
+      setErroPeticao("Não consegui conectar com o servidor no momento. Tente novamente em alguns instantes.");
     } finally {
       setLoadingPeticao(false);
     }

@@ -168,11 +168,11 @@ export default function LandingPage() {
 
             <div className="flex items-center gap-2 sm:gap-3">
               <Link href="/auth/signin" className="text-xs font-bold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-all">
-                Entrar
+                Acessar painel
               </Link>
               <Link href="/auth/signup" className="bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold py-2.5 px-4 rounded-xl shadow-md shadow-amber-500/20 transition-all active:scale-95 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
-                Testar 14 Dias Grátis
+                Começar grátis
               </Link>
             </div>
           </div>
@@ -194,20 +194,20 @@ export default function LandingPage() {
             </div>
 
             <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6 tracking-tight max-w-5xl mx-auto">
-              A Plataforma Inteligente que Transformará o Ritmo da Sua Advocacia
+              O escritório jurídico que funciona com mais clareza, rapidez e humanidade
             </h1>
 
             <p className="text-slate-300 text-sm sm:text-lg max-w-3xl mx-auto mb-10 leading-relaxed font-normal">
-              Consulte processos no <strong className="text-amber-400">DataJud CNJ</strong>, elabore minutas jurídicas com <strong className="text-amber-400">IA</strong>, envie documentos para assinatura digital e gerencie prazos e honorários em um único painel.
+              O LexAI organiza processos, clientes, prazos e IA em um único lugar — para você focar no que realmente importa: defender melhor cada caso.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 max-w-md mx-auto sm:max-w-none">
               <Link href="/auth/signup" className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-900 font-extrabold text-sm py-4 px-8 rounded-2xl shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 transition-all active:scale-95">
-                Começar 14 Dias Grátis sem Cartão
+                Começar agora
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link href="/auth/signin" className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold text-sm py-4 px-8 rounded-2xl flex items-center justify-center gap-2 transition-all">
-                Acessar Demonstração
+                Acessar meu painel
               </Link>
             </div>
           </motion.div>
@@ -277,10 +277,10 @@ export default function LandingPage() {
       <section id="funcionalidades" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <span className="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold px-3.5 py-1.5 rounded-full">
-            Suíte Jurídica Completa
+            Mais clareza para o dia a dia
           </span>
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-slate-900 mt-4 tracking-tight">
-            Ferramentas Desenvolvidas para Advogados de Alta Performance
+            Ferramentas pensadas para ajudar você a trabalhar com menos ruído
           </h2>
         </div>
 
@@ -312,7 +312,7 @@ export default function LandingPage() {
               Investimento Transparente
             </span>
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mt-4 tracking-tight">
-              Planos sem Fidelidade e sem Pegadinhas
+              Planos simples, claros e sem complicação
             </h2>
             <p className="text-slate-400 text-sm mt-2">Cancele a qualquer momento direto pelo seu painel.</p>
           </div>
@@ -363,7 +363,7 @@ export default function LandingPage() {
       <section id="faq" className="py-24 max-w-4xl mx-auto px-4">
         <div className="text-center mb-14">
           <h2 className="font-display text-3xl font-bold text-slate-900 tracking-tight">Perguntas Frequentes</h2>
-          <p className="text-slate-500 text-sm mt-2">Tudo o que você precisa saber sobre o LexAI.</p>
+          <p className="text-slate-500 text-sm mt-2">Tudo o que você precisa saber para começar com tranquilidade.</p>
         </div>
 
         <div className="space-y-4">

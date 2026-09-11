@@ -7,7 +7,7 @@ type ChatMsg = { role: "user" | "assistant"; text: string };
 
 export default function TabAssistente() {
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([
-    { role: "assistant", text: "Olá! Sou seu Assistente Jurídico IA, especializado em direito brasileiro. Posso ajudar com pesquisa de jurisprudência, fundamentação legal, análise de casos, doutrina e mais. Como posso te ajudar?" },
+    { role: "assistant", text: "Olá! Sou o Assistente Jurídico do LexAI. Posso te ajudar a organizar ideias, resumir movimentações, responder dúvidas práticas e acelerar o trabalho do seu escritório. Como posso ajudar hoje?" },
   ]);
   const [chatInput, setChatInput] = useState("");
   const [loadingChat, setLoadingChat] = useState(false);
@@ -26,19 +26,43 @@ export default function TabAssistente() {
     setLoadingChat(true);
 
     try {
-      const res = await fetch("/api/assistente", {
+      const history = chatMessages.slice(-5).map((message) => ({
+        role: message.role,
+        text: message.text,
+      }));
+
+      const res = await fetch("/api/ai/assistente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userText, history: chatMessages.slice(-5) }),
+        body: JSON.stringify({
+          text: userText,
+          messages: history,
+        }),
       });
+
       const data = await res.json();
-      if (res.ok && data.reply) {
-        setChatMessages((prev) => [...prev, { role: "assistant", text: data.reply }]);
+
+      if (res.ok && data.resposta) {
+        setChatMessages((prev) => [...prev, { role: "assistant", text: data.resposta }]);
       } else {
-        setChatMessages((prev) => [...prev, { role: "assistant", text: "Desculpe, ocorreu um erro na comunicação com a IA." }]);
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            text:
+              data?.error ||
+              "Não consegui responder agora. Tente novamente em alguns instantes.",
+          },
+        ]);
       }
     } catch {
-      setChatMessages((prev) => [...prev, { role: "assistant", text: "Erro de conexão com o servidor." }]);
+      setChatMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: "Parece que a conexão com o LexAI caiu por um instante. Tente novamente em alguns segundos.",
+        },
+      ]);
     } finally {
       setLoadingChat(false);
     }
@@ -141,10 +165,10 @@ export default function TabAssistente() {
 
       <div className="flex flex-wrap gap-2">
         {[
-          "Requisitos para aposentadoria por tempo de contribuição?",
-          "O que diz o STJ sobre juros abusivos em contratos bancários?",
-          "Direitos do consumidor em compra cancelada online?",
-          "Como funciona a dosimetria da pena no Código Penal?",
+          "Como posso organizar melhor este caso no meu dia a dia?",
+          "Me ajude a resumir esta movimentação processual em 3 pontos.",
+          "Quais são os principais pontos desse tema jurídico?",
+          "Preciso de uma redação inicial clara para este assunto.",
         ].map((sugestao) => (
           <button
             key={sugestao}

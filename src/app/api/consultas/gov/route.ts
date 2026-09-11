@@ -44,6 +44,90 @@ const BRASIL_API_BASE = "https://brasilapi.com.br/api";
 const VIACEP_BASE = "https://viacep.com.br/ws";
 const FIPE_API_BASE = "https://parallelum.com.br/fipe/api/v1";
 
+async function fetchConfiguredJson(
+  provider: string,
+  url: string,
+  headers: Record<string, string> = {},
+  method = "GET"
+) {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      Accept: "application/json",
+      ...headers,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`${provider} respondeu ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return {
+    raw: await response.text(),
+  };
+}
+
+function buildAuthHeaders(provider: "JUSBRASIL" | "SERPRO" | "SENATRAN" | "INPI" | "IEPTB") {
+  const headers: Record<string, string> = {};
+
+  if (provider === "JUSBRASIL") {
+    const apiKey = process.env.JUSBRASIL_API_KEY;
+    const apiUrl = process.env.JUSBRASIL_API_URL;
+
+    if (apiUrl && apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+
+    return headers;
+  }
+
+  if (provider === "INPI") {
+    const apiKey = process.env.INPI_API_KEY;
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+    return headers;
+  }
+
+  if (provider === "IEPTB") {
+    const apiKey = process.env.IEPTB_API_KEY;
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+    return headers;
+  }
+
+  if (provider === "SERPRO") {
+    const clientId = process.env.SERPRO_CLIENT_ID;
+    const clientSecret = process.env.SERPRO_CLIENT_SECRET;
+
+    if (clientId && clientSecret) {
+      headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+    }
+
+    return headers;
+  }
+
+  if (provider === "SENATRAN") {
+    const clientId = process.env.SENATRAN_CLIENT_ID;
+    const clientSecret = process.env.SENATRAN_CLIENT_SECRET;
+
+    if (clientId && clientSecret) {
+      headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
+    }
+
+    return headers;
+  }
+
+  return headers;
+}
+
 export async function POST(req: NextRequest) {
   try {
     if (!(await getAuthContext())) return unauthorizedResponse();
@@ -263,6 +347,22 @@ export async function POST(req: NextRequest) {
         }
 
         try {
+          const senatranApiUrl = process.env.SENATRAN_API_URL;
+          if (senatranApiUrl) {
+            const authHeaders = buildAuthHeaders("SENATRAN");
+            const endpoint = new URL(senatranApiUrl);
+            endpoint.searchParams.set("q", termoLimpo);
+            endpoint.searchParams.set("tipo", ehPlaca ? "placa" : "renavam");
+
+            const data = await fetchConfiguredJson("SENATRAN", endpoint.toString(), authHeaders);
+            return NextResponse.json({
+              sucesso: true,
+              tipo,
+              fonte: "SENATRAN / SINESP (configuração do provedor)",
+              dados: data,
+            });
+          }
+
           // Consulta pública FIPE (Marcas de carros)
           const resFipe = await fetch(`${FIPE_API_BASE}/carros/marcas`);
           if (resFipe.ok) {
@@ -280,7 +380,9 @@ export async function POST(req: NextRequest) {
               },
             });
           }
-        } catch {}
+        } catch (error) {
+          console.error("Erro ao consultar SENATRAN:", error);
+        }
 
         return NextResponse.json(
           { error: `A consulta de placa/RENAVAM em tempo real para '${termoLimpo}' exige integração com API do SENATRAN/SINESP ou Infosimples/DirectData.` },
@@ -290,26 +392,89 @@ export async function POST(req: NextRequest) {
 
       // 6. Marcas e Patentes (INPI)
       case "marcas": {
-        return NextResponse.json(
-          { error: `A busca de marcas para '${termoLimpo}' no INPI (Instituto Nacional da Propriedade Industrial) exige integração com a API de dados abertos do INPI ou chave de acesso comercial.` },
-          { status: 404 }
-        );
+        if (!process.env.INPI_API_URL) {
+          return NextResponse.json(
+            { error: `A busca de marcas para '${termoLimpo}' no INPI exige a variável INPI_API_URL configurada.` },
+            { status: 503 }
+          );
+        }
+
+        try {
+          const endpoint = new URL(process.env.INPI_API_URL);
+          endpoint.searchParams.set("q", termoLimpo);
+
+          const data = await fetchConfiguredJson("INPI", endpoint.toString(), buildAuthHeaders("INPI"));
+          return NextResponse.json({
+            sucesso: true,
+            tipo,
+            fonte: "INPI (configuração do provedor)",
+            dados: data,
+          });
+        } catch (error) {
+          console.error("Erro ao consultar INPI:", error);
+          return NextResponse.json(
+            { error: `Não foi possível consultar o INPI para '${termoLimpo}'. Verifique a configuração da API e a chave de acesso.` },
+            { status: 502 }
+          );
+        }
       }
 
       // 7. Restrição de Crédito (IEPTB Cartórios de Protesto)
       case "credito": {
-        return NextResponse.json(
-          { error: `A consulta de protestos para '${termoLimpo}' no IEPTB exige conexão contratada com a Central de Protestos de Títulos.` },
-          { status: 404 }
-        );
+        if (!process.env.IEPTB_API_URL) {
+          return NextResponse.json(
+            { error: `A consulta de protestos para '${termoLimpo}' no IEPTB exige a variável IEPTB_API_URL configurada.` },
+            { status: 503 }
+          );
+        }
+
+        try {
+          const endpoint = new URL(process.env.IEPTB_API_URL);
+          endpoint.searchParams.set("q", termoLimpo);
+
+          const data = await fetchConfiguredJson("IEPTB", endpoint.toString(), buildAuthHeaders("IEPTB"));
+          return NextResponse.json({
+            sucesso: true,
+            tipo,
+            fonte: "IEPTB (configuração do provedor)",
+            dados: data,
+          });
+        } catch (error) {
+          console.error("Erro ao consultar IEPTB:", error);
+          return NextResponse.json(
+            { error: `Não foi possível consultar o IEPTB para '${termoLimpo}'. Verifique a configuração da API e a chave de acesso.` },
+            { status: 502 }
+          );
+        }
       }
 
       // 8. Localização de Devedores (Serpro PGFN / CADIN)
       case "localizacao": {
-        return NextResponse.json(
-          { error: `A localização de devedores e consulta na Dívida Ativa da União (Serpro/PGFN) para '${termoLimpo}' exige convênio oficial ou chave comercial (Infosimples / DirectData / Serpro API Center).` },
-          { status: 404 }
-        );
+        if (!process.env.SERPRO_API_URL) {
+          return NextResponse.json(
+            { error: `A localização de devedores e consulta na Dívida Ativa da União (Serpro/PGFN) para '${termoLimpo}' exige a variável SERPRO_API_URL configurada.` },
+            { status: 503 }
+          );
+        }
+
+        try {
+          const endpoint = new URL(process.env.SERPRO_API_URL);
+          endpoint.searchParams.set("q", termoLimpo);
+
+          const data = await fetchConfiguredJson("SERPRO", endpoint.toString(), buildAuthHeaders("SERPRO"));
+          return NextResponse.json({
+            sucesso: true,
+            tipo,
+            fonte: "Serpro PGFN / CADIN (configuração do provedor)",
+            dados: data,
+          });
+        } catch (error) {
+          console.error("Erro ao consultar Serpro:", error);
+          return NextResponse.json(
+            { error: `Não foi possível consultar o Serpro PGFN/CADIN para '${termoLimpo}'. Verifique a configuração da API.` },
+            { status: 502 }
+          );
+        }
       }
 
       // 10. Feriados Nacionais (BrasilAPI Real - Útil para Prazos CPC Art. 219)
@@ -383,7 +548,35 @@ export async function POST(req: NextRequest) {
 
       // 9. CNH / Dados Profissionais
       case "cnh":
-      case "profissionais":
+      case "profissionais": {
+        if (!process.env.JUSBRASIL_API_URL || !process.env.JUSBRASIL_API_KEY) {
+          return NextResponse.json(
+            { error: `A consulta '${tipo}' para '${termoLimpo}' exige uma configuração real do provedor Jusbrasil.` },
+            { status: 503 }
+          );
+        }
+
+        try {
+          const endpoint = new URL(process.env.JUSBRASIL_API_URL);
+          endpoint.searchParams.set("q", termoLimpo);
+          endpoint.searchParams.set("tipo", tipo);
+
+          const data = await fetchConfiguredJson("JUSBRASIL", endpoint.toString(), buildAuthHeaders("JUSBRASIL"));
+          return NextResponse.json({
+            sucesso: true,
+            tipo,
+            fonte: "Jusbrasil (configuração do provedor)",
+            dados: data,
+          });
+        } catch (error) {
+          console.error("Erro ao consultar Jusbrasil:", error);
+          return NextResponse.json(
+            { error: `Não foi possível consultar o Jusbrasil para '${termoLimpo}'. Verifique a configuração da API e a chave de acesso.` },
+            { status: 502 }
+          );
+        }
+      }
+
       default: {
         return NextResponse.json(
           { error: `A consulta '${tipo}' para '${termoLimpo}' exige chave de API autorizada junto aos órgãos oficiais (DETRAN / Conselhos de Classe).` },
