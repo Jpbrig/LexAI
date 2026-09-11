@@ -157,7 +157,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) return <DashboardLoadingState />;
+  if (loading || !data) return <DashboardLoadingState />;
 
   const statsList = [
     {
