@@ -254,7 +254,7 @@ function DashboardLayoutContent({
 
           <button
             type="button"
-            onClick={() => signOut({ redirectTo: "/auth/signin" })}
+            onClick={() => signOut({ callbackUrl: "/auth/signin" })}
             className="flex items-center gap-3 w-full px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors text-left"
             title={collapsed ? "Sair" : undefined}
           >
