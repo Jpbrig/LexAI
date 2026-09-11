@@ -84,6 +84,7 @@ function DashboardLoadingState() {
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
+  const [redirecting, setRedirecting] = useState(false);
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [onboardingState, setOnboardingState] = useState<Record<string, boolean>>({
     workspace: false,
@@ -103,6 +104,7 @@ export default function DashboardPage() {
 
         if (!response.ok) {
           if (response.status === 401) {
+            setRedirecting(true);
             if (typeof window !== "undefined") {
               window.location.assign(`/auth/signin?callbackUrl=${encodeURIComponent("/dashboard")}`);
             }
@@ -157,7 +159,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading || !data) return <DashboardLoadingState />;
+  if (loading || redirecting) return <DashboardLoadingState />;
 
   const statsList = [
     {
