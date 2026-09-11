@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileSignature, CheckCircle2, AlertCircle, FileCheck } from "lucide-react";
+import { FileSignature, AlertCircle, FileCheck } from "lucide-react";
 
 interface Envelope {
   id: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Scale, Search, AlertCircle, CheckCircle2, Globe } from "lucide-react";
+import { Scale, Search, CheckCircle2, Globe } from "lucide-react";
 
 interface Jurisprudencia {
   tribunal: string;

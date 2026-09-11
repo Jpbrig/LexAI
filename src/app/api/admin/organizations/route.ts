@@ -9,7 +9,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   getPlatformAdminContext,
-  unauthorizedResponse,
   forbiddenResponse,
 } from "@/lib/auth-guard";
 import { logAuditAction } from "@/lib/audit";

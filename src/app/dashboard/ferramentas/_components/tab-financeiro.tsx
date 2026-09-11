@@ -17,7 +17,7 @@ interface Lancamento {
 export default function TabFinanceiro() {
   const [finTipo, setFinTipo] = useState<"receita" | "despesa">("receita");
   const [finDescricao, setFinDescricao] = useState("");
-  const [finCategoria, setFinCategoria] = useState("Honorários Pró-Labore");
+  const finCategoria = "Honorários Pró-Labore";
   const [finCliente, setFinCliente] = useState("");
   const [finValor, setFinValor] = useState("");
   

@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Building2, Car, Users, Globe, FileText, CheckCircle2 } from "lucide-react";
+import { Search, Building2, Car, Users, Globe, CheckCircle2 } from "lucide-react";
 import type { GovQueryResponse } from "@/lib/types";
 
 export default function TabConsultas() {
   const [selectedConsulta, setSelectedConsulta] = useState<string>("buscador");
-  const [consultaCatFilter, setConsultaCatFilter] = useState<string>("todas");
   const [consultaTermo, setConsultaTermo] = useState<string>("");
   const [loadingGov, setLoadingGov] = useState(false);
   const [resultadoGov, setResultadoGov] = useState<GovQueryResponse | null>(null);

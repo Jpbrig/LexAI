@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Area,
   AreaChart,
@@ -21,7 +22,6 @@ import {
   Plus,
   Activity,
   ArrowRight,
-  Users,
   Sparkles,
   CheckCircle2,
   Target,
@@ -83,6 +83,7 @@ function DashboardLoadingState() {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
   const [data, setData] = useState<DashboardResponse | null>(null);
@@ -105,9 +106,7 @@ export default function DashboardPage() {
         if (!response.ok) {
           if (response.status === 401) {
             setRedirecting(true);
-            if (typeof window !== "undefined") {
-              window.location.assign(`/auth/signin?callbackUrl=${encodeURIComponent("/dashboard")}`);
-            }
+            router.push(`/auth/signin?callbackUrl=${encodeURIComponent("/dashboard")}`);
             return;
           }
 
@@ -116,6 +115,13 @@ export default function DashboardPage() {
 
         const responseData = (await response.json()) as DashboardResponse;
         setData(responseData);
+        setOnboardingState({
+          workspace: false,
+          processos: false,
+          clientes: false,
+          assistente: false,
+          ...(responseData.onboardingState ?? {}),
+        });
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         console.error("Erro ao carregar dashboard:", error);
@@ -126,19 +132,7 @@ export default function DashboardPage() {
 
     void carregarDashboard();
     return () => controller.abort();
-  }, []);
-
-  const normalizedOnboardingState = useMemo(() => ({
-    workspace: false,
-    processos: false,
-    clientes: false,
-    assistente: false,
-    ...(data?.onboardingState ?? {}),
-  }), [data?.onboardingState]);
-
-  useEffect(() => {
-    setOnboardingState(normalizedOnboardingState);
-  }, [normalizedOnboardingState]);
+  }, [router]);
 
   async function persistOnboardingState(nextState: Record<string, boolean>) {
     try {
@@ -158,8 +152,6 @@ export default function DashboardPage() {
       // Ignora erro de persistência e mantém o estado local da interface.
     }
   }
-
-  if (loading || redirecting) return <DashboardLoadingState />;
 
   const statsList = [
     {
@@ -270,6 +262,8 @@ export default function DashboardPage() {
     { name: "IA", value: Math.max(4, Math.round((data?.stats?.movimentacoesHoje ?? 0) / 2)) },
     { name: "Alertas", value: Math.max(1, data?.stats?.totalAlertas ?? 0) },
   ], [data?.stats?.processosAtivos, data?.stats?.movimentacoesHoje, data?.stats?.totalAlertas]);
+
+  if (loading || redirecting) return <DashboardLoadingState />;
 
   return (
     <div className="space-y-8 animate-fade-in">

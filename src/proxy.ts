@@ -3,14 +3,6 @@ import type { NextRequest } from "next/server";
 import { auth } from "@/auth";
 
 
-const PUBLIC_API_PATHS = new Set([
-  "/api/health",
-  "/api/ready",
-  // POST /api/user is the public account-registration endpoint.
-  // GET and PATCH remain protected by their route-level auth guard.
-  "/api/user",
-]);
-
 function addSecurityHeaders(response: NextResponse) {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
@@ -37,12 +29,6 @@ function addSecurityHeaders(response: NextResponse) {
   );
 
   return response;
-}
-
-function isPrivateApi(pathname: string) {
-  return pathname.startsWith("/api/")
-    && !pathname.startsWith("/api/auth/")
-    && !PUBLIC_API_PATHS.has(pathname);
 }
 
 function isProtectedPage(pathname: string) {

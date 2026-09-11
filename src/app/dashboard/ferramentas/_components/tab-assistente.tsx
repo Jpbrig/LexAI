@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, VolumeX, Volume2, AlertCircle, MicOff, Mic, Sparkles, X } from "lucide-react";
+import { Bot, VolumeX, Volume2, MicOff, Mic, Sparkles, X } from "lucide-react";
 
 type ChatMsg = { role: "user" | "assistant"; text: string };
 
@@ -145,7 +145,7 @@ export default function TabAssistente() {
       };
       recognition.start();
       setRecognitionInstance(recognition);
-    } catch (e) {
+    } catch {
       setMicError("Erro ao iniciar gravador.");
       setIsListening(false);
     }
