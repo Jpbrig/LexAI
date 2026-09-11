@@ -1,9 +1,6 @@
-import NextAuth from "next-auth";
-import { authConfig } from "@/auth.config";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-const { auth } = NextAuth(authConfig);
+import { auth } from "@/auth";
 
 
 const PUBLIC_API_PATHS = new Set([
@@ -58,8 +55,17 @@ function isAuthPage(pathname: string) {
 
 export default auth((request) => {
   const { pathname, search } = request.nextUrl;
-  const user = request.auth?.user as { email?: string | null; platformRole?: string } | undefined;
-  const hasSession = Boolean(user);
+  const session = request.auth as {
+    user?: { id?: string | null; email?: string | null; platformRole?: string };
+    sessionId?: string | null;
+    workspaceId?: string | null;
+  } | undefined;
+  const user = session?.user;
+  const hasSession = Boolean(
+    user?.id &&
+    session?.sessionId &&
+    session?.workspaceId
+  );
 
   if ((isProtectedPage(pathname) || isPrivateApi(pathname)) && !hasSession) {
     if (isPrivateApi(pathname)) {
