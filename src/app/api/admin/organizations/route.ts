@@ -45,7 +45,7 @@ export async function GET() {
     id: w.id,
     name: w.name,
     plano: w.plano,
-    status: "ACTIVE", // Futuramente: campo status no Workspace
+    status: w.subscription?.status || "ACTIVE",
     ownerName: w.owner.name,
     ownerEmail: w.owner.email,
     membersCount: w._count.memberships,

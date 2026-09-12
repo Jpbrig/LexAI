@@ -11,7 +11,7 @@ interface Lancamento {
   cliente: string;
   categoria: string;
   valor: number;
-  status: string;
+  status: "Pago" | "Pendente";
 }
 
 export default function TabFinanceiro() {
@@ -45,6 +45,61 @@ export default function TabFinanceiro() {
     setFinDescricao("");
     setFinValor("");
     setFinCliente("");
+  }
+
+  function formatarValor(valor: number) {
+    return new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(valor);
+  }
+
+  function parseValor(valor: string) {
+    const valorNormalizado = valor
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .replace(/[^\d.-]/g, "");
+
+    const numero = Number(valorNormalizado);
+    return Number.isFinite(numero) ? numero : 0;
+  }
+
+  function atualizarLancamento(
+    id: number,
+    campo: "tipo" | "status" | "descricao" | "valor",
+    valor: string,
+  ) {
+    setFinLancamentos((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+
+        if (campo === "tipo") {
+          return {
+            ...item,
+            tipo: valor as "receita" | "despesa",
+          };
+        }
+
+        if (campo === "status") {
+          return {
+            ...item,
+            status: valor as "Pago" | "Pendente",
+          };
+        }
+
+        if (campo === "descricao") {
+          return {
+            ...item,
+            descricao: valor,
+          };
+        }
+
+        return {
+          ...item,
+          valor: parseValor(valor),
+        };
+      }),
+    );
   }
 
   const receitas = finLancamentos.filter(l => l.tipo === "receita" && l.status === "Pago").reduce((acc, l) => acc + l.valor, 0);
@@ -135,10 +190,44 @@ export default function TabFinanceiro() {
               {finLancamentos.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50/50">
                   <td className="p-3 text-slate-500 font-mono">{item.data}</td>
-                  <td className="p-3 font-extrabold text-[10px]">{item.tipo === "receita" ? <span className="text-emerald-700">+ RECEITA</span> : <span className="text-red-700">- DESPESA</span>}</td>
-                  <td className="p-3 font-bold text-slate-900">{item.descricao}</td>
-                  <td className={`p-3 font-mono font-bold ${item.tipo === "receita" ? "text-emerald-700" : "text-red-600"}`}>R$ {item.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                  <td className="p-3"><span className={`px-2 py-0.5 rounded-full text-[10px] ${item.status === "Pago" ? "bg-emerald-50 text-emerald-700" : "bg-amber-100 text-amber-800"}`}>{item.status}</span></td>
+                  <td className="p-3">
+                    <select
+                      className="input text-[10px] py-1.5 px-2 min-w-[110px]"
+                      value={item.tipo}
+                      onChange={(e) => atualizarLancamento(item.id, "tipo", e.target.value)}
+                    >
+                      <option value="receita">+ RECEITA</option>
+                      <option value="despesa">- DESPESA</option>
+                    </select>
+                  </td>
+                  <td className="p-3 font-bold text-slate-900">
+                    <input
+                      type="text"
+                      className="input text-[10px] py-1.5 px-2 min-w-[160px]"
+                      value={item.descricao}
+                      onChange={(e) => atualizarLancamento(item.id, "descricao", e.target.value)}
+                    />
+                  </td>
+                  <td className={`p-3 font-mono font-bold ${item.tipo === "receita" ? "text-emerald-700" : "text-red-600"}`}>
+                    <input
+                      type="text"
+                      className="input text-[10px] py-1.5 px-2 min-w-[110px]"
+                      value={formatarValor(item.valor)}
+                      onChange={(e) => atualizarLancamento(item.id, "valor", e.target.value)}
+                    />
+                  </td>
+                  <td className="p-3">
+                    <select
+                      className={`input text-[10px] py-1.5 px-2 min-w-[110px] ${
+                        item.status === "Pago" ? "border-emerald-200" : "border-amber-200"
+                      }`}
+                      value={item.status}
+                      onChange={(e) => atualizarLancamento(item.id, "status", e.target.value)}
+                    >
+                      <option value="Pago">Pago</option>
+                      <option value="Pendente">Pendente</option>
+                    </select>
+                  </td>
                 </tr>
               ))}
             </tbody>
