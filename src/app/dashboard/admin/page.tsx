@@ -9,6 +9,7 @@ import {
   FileText,
   Search,
   RefreshCw,
+  Lock,
   CheckCircle2,
   Scale,
   Lock,
@@ -701,13 +702,6 @@ export default function AdminMasterPage() {
                 Estas chaves alimentam o sistema para todos os escritórios clientes. Advogados não precisam configurá-las.
               </p>
             </div>
-            <Link
-              href="/dashboard/configuracoes"
-              className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
-            >
-              <KeyRound className="w-4 h-4 text-amber-400" />
-              Gerenciar Chaves no Modal
-            </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
