@@ -7,7 +7,6 @@ import {
   Users,
   DollarSign,
   FileText,
-  KeyRound,
   Search,
   RefreshCw,
   CheckCircle2,
@@ -250,13 +249,6 @@ export default function AdminMasterPage() {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
             Atualizar Dados
           </button>
-          <Link
-            href="/dashboard/configuracoes"
-            className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5"
-          >
-            <KeyRound className="w-4 h-4 text-amber-400" />
-            Configurar Credenciais
-          </Link>
         </div>
       </div>
 
