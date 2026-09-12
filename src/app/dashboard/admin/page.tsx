@@ -176,6 +176,24 @@ export default function AdminMasterPage() {
     }
   }
 
+  async function handleLockUser(userId: string) {
+    setActionUserId(userId);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action: "lock" }),
+      });
+      if (res.ok) {
+        await loadUsers();
+      }
+    } catch (err) {
+      console.error("Erro ao bloquear usuário:", err);
+    } finally {
+      setActionUserId(null);
+    }
+  }
+
   async function handleUnlockUser(userId: string) {
     setActionUserId(userId);
     try {
@@ -553,7 +571,7 @@ export default function AdminMasterPage() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {isLocked && (
+                            {isLocked ? (
                               <button
                                 type="button"
                                 disabled={isCurrentActionUser}
@@ -562,6 +580,16 @@ export default function AdminMasterPage() {
                                 title="Desbloquear tentativas de login"
                               >
                                 <Unlock className="w-3 h-3" /> Desbloquear
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={isCurrentActionUser}
+                                onClick={() => handleLockUser(u.id)}
+                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold border border-slate-300 flex items-center gap-1"
+                                title="Bloquear acesso do usuário"
+                              >
+                                <Lock className="w-3 h-3" /> Bloquear
                               </button>
                             )}
 

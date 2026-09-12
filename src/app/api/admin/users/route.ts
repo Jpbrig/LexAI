@@ -91,6 +91,16 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "ID do usuário é obrigatório." }, { status: 400 });
     }
 
+    if (action === "lock") {
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          lockedUntil: new Date("2100-01-01T00:00:00.000Z"),
+        },
+      });
+      return NextResponse.json({ success: true, user: updatedUser });
+    }
+
     if (action === "unlock") {
       const updatedUser = await prisma.user.update({
         where: { id: userId },
