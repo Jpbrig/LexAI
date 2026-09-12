@@ -4,6 +4,8 @@ import { Resend } from "resend";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireServerSecret } from "@/lib/env";
+import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
+import { getAuthContext } from "@/lib/auth-guard";
 
 const schema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
@@ -44,7 +46,8 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    const resendApiKey = requireServerSecret("RESEND_API_KEY");
+    const authContext = await getAuthContext();
+    const resendApiKey = await getWorkspaceIntegrationValue(authContext?.workspaceId, "RESEND", "RESEND_API_KEY") || requireServerSecret("RESEND_API_KEY");
     const emailFrom = process.env.EMAIL_FROM;
     if (!resendApiKey || !emailFrom) {
       console.error("Recuperação de senha indisponível: Resend não configurado.");

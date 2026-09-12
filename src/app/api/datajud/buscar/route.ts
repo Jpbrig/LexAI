@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { requireServerSecret } from "@/lib/env";
+import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
 
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
 
-    const apiKey = requireServerSecret("DATAJUD_API_KEY");
+    const apiKey = await getWorkspaceIntegrationValue(authContext.workspaceId, "DATAJUD", "DATAJUD_API_KEY") || requireServerSecret("DATAJUD_API_KEY");
     if (!apiKey) {
       return NextResponse.json(
         { error: "A integração DataJud está temporariamente indisponível." },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { env } from "@/lib/env";
+import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
 
 const requestSchema = z.object({
   nomeSignatario: z.string().trim().min(2).max(160),
@@ -16,9 +17,11 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    if (!(await getAuthContext())) return unauthorizedResponse();
+    const authContext = await getAuthContext();
+    if (!authContext) return unauthorizedResponse();
 
-    if (!env.CLICSIGN_API_KEY) {
+    const clicsignApiKey = await getWorkspaceIntegrationValue(authContext.workspaceId, "CLICSIGN", "CLICSIGN_API_KEY");
+    if (!clicsignApiKey) {
       return NextResponse.json(
         { error: "A assinatura eletrônica está indisponível até a configuração do ClicSign no servidor." },
         { status: 503 },
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = env.CLICSIGN_ENV === "production"
       ? "https://app.clicsign.com/api/v1"
       : "https://sandbox.clicsign.com/api/v1";
-    const accessToken = encodeURIComponent(env.CLICSIGN_API_KEY);
+    const accessToken = encodeURIComponent(clicsignApiKey);
     const contentBase64 = Buffer.from(conteudoDocumento, "utf8").toString("base64");
     const dataUri = `data:text/plain;base64,${contentBase64}`;
 

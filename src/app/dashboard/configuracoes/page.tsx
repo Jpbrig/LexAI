@@ -61,6 +61,10 @@ export default function ConfiguracoesPage() {
   };
 
   const [membros, setMembros] = useState<MembroItem[]>([]);
+  const [integrations, setIntegrations] = useState<Array<{ provider: string; configured: boolean }>>([]);
+  const [integrationInputs, setIntegrationInputs] = useState<Record<string, string>>({});
+  const [savingIntegration, setSavingIntegration] = useState<string | null>(null);
+  const [integrationFeedback, setIntegrationFeedback] = useState<string | null>(null);
 
   function carregarMembros() {
     fetch("/api/workspace/members")
@@ -135,8 +139,64 @@ export default function ConfiguracoesPage() {
     }
   }
 
+  async function carregarIntegracoes() {
+    try {
+      const res = await fetch("/api/integrations/credentials");
+      if (!res.ok) return;
+
+      const data = await res.json();
+      setIntegrations(data.providers || []);
+      setIntegrationInputs((prev) => {
+        const next = { ...prev };
+        for (const item of data.providers || []) {
+          if (!(item.provider in next)) {
+            next[item.provider] = "";
+          }
+        }
+        return next;
+      });
+    } catch (err) {
+      console.error("Erro ao carregar integrações", err);
+    }
+  }
+
+  async function handleSaveIntegration(provider: string, value: string) {
+    setSavingIntegration(provider);
+    setIntegrationFeedback(null);
+
+    try {
+      const res = await fetch("/api/integrations/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, value }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao salvar integração.");
+      }
+
+      setIntegrations((prev) =>
+        prev.map((item) =>
+          item.provider === provider
+            ? { ...item, configured: Boolean(data.configured) }
+            : item,
+        ),
+      );
+      setIntegrationInputs((prev) => ({ ...prev, [provider]: "" }));
+      setIntegrationFeedback(`Configuração salva para ${provider}.`);
+      setTimeout(() => setIntegrationFeedback(null), 3000);
+    } catch (err) {
+      console.error("Erro ao salvar integração", err);
+      setIntegrationFeedback(err instanceof Error ? err.message : "Erro ao salvar integração.");
+    } finally {
+      setSavingIntegration(null);
+    }
+  }
+
   useEffect(() => {
     carregarMembros();
+    carregarIntegracoes();
     fetch("/api/user")
       .then((res) => res.json())
       .then((data) => {
@@ -382,7 +442,7 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
 
-      {/* Integrações do sistema — configuradas no servidor */}
+      {/* Integrações do sistema — configuradas no painel */}
       <div className="card space-y-5">
         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
           <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-bold text-base">
@@ -391,39 +451,75 @@ export default function ConfiguracoesPage() {
           <div>
             <h3 className="font-bold text-slate-900">Integrações da Plataforma</h3>
             <p className="text-xs text-slate-500">
-              As integrações de IA, e-mail, Stripe, OAuth, ClicSign e APIs governamentais são configuradas no servidor por variáveis de ambiente.
+              Configure as chaves e tokens das integrações diretamente aqui. Os valores ficam ligados ao workspace atual e podem ser alterados a qualquer momento.
             </p>
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
           <p>
-            Este painel não simula serviços ativos. Quando as credenciais forem adicionadas no ambiente do servidor e a aplicação for reiniciada, cada integração passa a ficar disponível para uso real.
+            Configure as credenciais do painel e, em seguida, reinicie a aplicação para que os serviços passem a usar os novos valores do ambiente do workspace.
           </p>
         </div>
 
+        {integrationFeedback && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 flex-shrink-0" />
+            {integrationFeedback}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[
-            "Google Gemini / OpenAI",
-            "DataJud / CNJ",
-            "ClicSign",
-            "Stripe",
-            "Google OAuth",
-            "Resend / e-mail",
-            "BrasilAPI / BACEN",
-            "Serpro / SENATRAN / INPI / IEPTB",
-          ].map((item) => (
-            <div key={item} className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-col justify-between">
+          {(integrations.length ? integrations : [
+            { provider: "Google Gemini / OpenAI", configured: false },
+            { provider: "DataJud / CNJ", configured: false },
+            { provider: "ClicSign", configured: false },
+            { provider: "Stripe", configured: false },
+            { provider: "Google OAuth", configured: false },
+            { provider: "Resend / e-mail", configured: false },
+            { provider: "BrasilAPI / BACEN", configured: false },
+            { provider: "Serpro / SENATRAN / INPI / IEPTB", configured: false },
+          ]).map((item) => (
+            <div key={item.provider} className="rounded-2xl border border-slate-200 bg-white p-4 flex flex-col justify-between gap-3">
               <div>
-                <p className="text-xs font-bold text-slate-900 mb-1">{item}</p>
+                <p className="text-xs font-bold text-slate-900 mb-1">{item.provider}</p>
                 <p className="text-[11px] text-slate-500 leading-relaxed">
-                  Disponível após configuração das variáveis de ambiente correspondentes no servidor.
+                  Cole a chave ou token correspondente para ativar a integração no ambiente do workspace.
                 </p>
               </div>
-              <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                <span>Status</span>
-                <span className="text-amber-700 font-bold">Pendente de configuração</span>
+
+              <div className="space-y-2">
+                <label htmlFor={`integration-${item.provider}`} className="label">Valor da integração</label>
+                <input
+                  id={`integration-${item.provider}`}
+                  type="password"
+                  className="input"
+                  value={integrationInputs[item.provider] ?? ""}
+                  placeholder={item.configured ? "Digite para substituir a configuração atual" : "Informe a chave ou token"}
+                  onChange={(e) =>
+                    setIntegrationInputs((prev) => ({
+                      ...prev,
+                      [item.provider]: e.target.value,
+                    }))
+                  }
+                />
               </div>
+
+              <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between gap-3 text-[10px] text-slate-400 font-medium">
+                <span>Status</span>
+                <span className={item.configured ? "text-emerald-700 font-bold" : "text-amber-700 font-bold"}>
+                  {item.configured ? "Configurado" : "Pendente de configuração"}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSaveIntegration(item.provider, integrationInputs[item.provider] ?? "")}
+                disabled={savingIntegration === item.provider}
+                className="mt-1 rounded-xl bg-slate-900 text-white px-3 py-2 text-xs font-semibold disabled:opacity-60"
+              >
+                {savingIntegration === item.provider ? "Salvando..." : item.configured ? "Atualizar configuração" : "Salvar configuração"}
+              </button>
             </div>
           ))}
         </div>

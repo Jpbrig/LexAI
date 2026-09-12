@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { requireServerSecret } from "@/lib/env";
+import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
 import { z } from "zod";
 
 const requestSchema = z.object({
@@ -12,7 +13,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    if (!(await getAuthContext())) return unauthorizedResponse();
+    const authContext = await getAuthContext();
+    if (!authContext) return unauthorizedResponse();
 
     const parsed = requestSchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -22,7 +24,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = requireServerSecret("GEMINI_API_KEY") || requireServerSecret("OPENAI_API_KEY");
+    const apiKey = await getWorkspaceIntegrationValue(authContext.workspaceId, "GEMINI", "GEMINI_API_KEY")
+      || await getWorkspaceIntegrationValue(authContext.workspaceId, "OPENAI", "OPENAI_API_KEY");
     if (!apiKey) {
       return NextResponse.json(
         { error: "A IA do LexAI está sendo configurada no momento. Volte em alguns minutos." },
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const resumo = requireServerSecret("GEMINI_API_KEY")
+    const resumo = await getWorkspaceIntegrationValue(authContext.workspaceId, "GEMINI", "GEMINI_API_KEY")
       ? await resumirComGemini(parsed.data.texto, parsed.data.tipo, apiKey)
       : await resumirComOpenAI(parsed.data.texto, parsed.data.tipo, apiKey);
 
