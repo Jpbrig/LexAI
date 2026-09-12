@@ -14,14 +14,13 @@ import {
   Loader2,
   UserPlus,
   X,
-  ShieldCheck,
   Check,
   Shield,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 export default function ConfiguracoesPage() {
-  const { data: session } = useSession();
+  useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
@@ -139,27 +138,6 @@ export default function ConfiguracoesPage() {
     }
   }
 
-  async function carregarIntegracoes() {
-    try {
-      const res = await fetch("/api/integrations/credentials");
-      if (!res.ok) return;
-
-      const data = await res.json();
-      setIntegrations(data.providers || []);
-      setIntegrationInputs((prev) => {
-        const next = { ...prev };
-        for (const item of data.providers || []) {
-          if (!(item.provider in next)) {
-            next[item.provider] = "";
-          }
-        }
-        return next;
-      });
-    } catch (err) {
-      console.error("Erro ao carregar integrações", err);
-    }
-  }
-
   async function handleSaveIntegration(provider: string, value: string) {
     setSavingIntegration(provider);
     setIntegrationFeedback(null);
@@ -195,20 +173,55 @@ export default function ConfiguracoesPage() {
   }
 
   useEffect(() => {
-    carregarMembros();
-    carregarIntegracoes();
-    fetch("/api/user")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data) {
-          setName(data.name || "");
-          setEmail(data.email || "");
-          setOab(data.oab || "");
-          setImage(data.image || "");
+    const carregarDadosIniciais = async () => {
+      try {
+        const [membrosRes, integracoesRes, userRes] = await Promise.all([
+          fetch("/api/workspace/members"),
+          fetch("/api/integrations/credentials"),
+          fetch("/api/user"),
+        ]);
+
+        if (membrosRes.ok) {
+          const membrosData = await membrosRes.json();
+          if (Array.isArray(membrosData)) {
+            setMembros(membrosData);
+          }
         }
+
+        if (integracoesRes.ok) {
+          const integracoesData = await integracoesRes.json();
+          const providers = integracoesData.providers || [];
+          setIntegrations(providers);
+          setIntegrationInputs((prev) => {
+            const next = { ...prev };
+
+            for (const item of providers) {
+              if (!(item.provider in next)) {
+                next[item.provider] = "";
+              }
+            }
+
+            return next;
+          });
+        }
+
+        if (userRes.ok) {
+          const data = await userRes.json();
+          if (data) {
+            setName(data.name || "");
+            setEmail(data.email || "");
+            setOab(data.oab || "");
+            setImage(data.image || "");
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar dados iniciais", err);
+      } finally {
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      }
+    };
+
+    void carregarDadosIniciais();
   }, []);
 
   async function handleSavePerfil(e: React.FormEvent) {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
-import { requireServerSecret } from "@/lib/env";
 import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
 import { z } from "zod";
 
