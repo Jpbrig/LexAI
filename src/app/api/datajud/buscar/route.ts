@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forbiddenResponse, getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { isRateLimited } from "@/lib/rate-limit";
 import { requireServerSecret } from "@/lib/env";
 import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
 import { hasPermission, PERMISSIONS } from "@/lib/authorization";
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
     if (!hasPermission(authContext, PERMISSIONS.PROCESSES_READ)) return forbiddenResponse();
+    if (await isRateLimited(req, "datajud", 5, 60_000)) return NextResponse.json({ error: "Limite de buscas atingido. Aguarde um minuto." }, { status: 429 });
 
     const apiKey = await getWorkspaceIntegrationValue(authContext.workspaceId, "DATAJUD", "DATAJUD_API_KEY") || requireServerSecret("DATAJUD_API_KEY");
     if (!apiKey) {

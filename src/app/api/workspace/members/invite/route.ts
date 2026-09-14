@@ -19,7 +19,7 @@ const inviteSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    if (isRateLimited(req, "workspace-invite", 10, 60_000)) return NextResponse.json({ error: "Muitas tentativas. Aguarde um minuto." }, { status: 429 });
+    if (await isRateLimited(req, "workspace-invite", 10, 60_000)) return NextResponse.json({ error: "Muitas tentativas. Aguarde um minuto." }, { status: 429 });
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
     if (!hasPermission(context, PERMISSIONS.USERS_INVITE)) return forbiddenResponse();

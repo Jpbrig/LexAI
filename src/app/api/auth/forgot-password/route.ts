@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    if (isRateLimited(req, "forgot-password", 5, 15 * 60 * 1000)) return neutralResponse;
+    if (await isRateLimited(req, "forgot-password", 5, 15 * 60 * 1000)) return neutralResponse;
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) return neutralResponse;
 

@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    if (isRateLimited(req, "reset-password", 8, 15 * 60 * 1000)) return NextResponse.json({ error: "Muitas tentativas. Aguarde alguns minutos." }, { status: 429 });
+    if (await isRateLimited(req, "reset-password", 8, 15 * 60 * 1000)) return NextResponse.json({ error: "Muitas tentativas. Aguarde alguns minutos." }, { status: 429 });
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: "Link ou senha inválidos." }, { status: 400 });

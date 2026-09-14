@@ -4,6 +4,7 @@ import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
 import { z } from "zod";
 import { forbiddenResponse } from "@/lib/auth-guard";
 import { hasPermission, PERMISSIONS } from "@/lib/authorization";
+import { isRateLimited } from "@/lib/rate-limit";
 
 const requestSchema = z.object({
   texto: z.string().trim().min(1).max(100_000),
@@ -17,6 +18,7 @@ export async function POST(req: NextRequest) {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
     if (!hasPermission(authContext, PERMISSIONS.AI_TOOLS_USE)) return forbiddenResponse();
+    if (await isRateLimited(req, "ai", 10, 60_000)) return NextResponse.json({ error: "Limite de uso da IA atingido. Aguarde um minuto." }, { status: 429 });
 
     const parsed = requestSchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -26,8 +28,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = await getWorkspaceIntegrationValue(authContext.workspaceId, "GEMINI", "GEMINI_API_KEY")
-      || await getWorkspaceIntegrationValue(authContext.workspaceId, "OPENAI", "OPENAI_API_KEY");
+    const geminiKey = await getWorkspaceIntegrationValue(authContext.workspaceId, "GEMINI", "GEMINI_API_KEY");
+    const openAIKey = !geminiKey ? await getWorkspaceIntegrationValue(authContext.workspaceId, "OPENAI", "OPENAI_API_KEY") : null;
+    const apiKey = geminiKey || openAIKey;
+    
     if (!apiKey) {
       return NextResponse.json(
         { error: "A IA do LexAI está sendo configurada no momento. Volte em alguns minutos." },
@@ -35,7 +39,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const resumo = await getWorkspaceIntegrationValue(authContext.workspaceId, "GEMINI", "GEMINI_API_KEY")
+    const resumo = geminiKey
       ? await resumirComGemini(parsed.data.texto, parsed.data.tipo, apiKey)
       : await resumirComOpenAI(parsed.data.texto, parsed.data.tipo, apiKey);
 
