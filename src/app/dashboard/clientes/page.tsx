@@ -48,7 +48,7 @@ function mapApiToCliente(cliente: ClienteApiItem): Cliente {
     bairro: (cliente as Record<string, unknown>).bairro as string ?? "",
     cidade: cliente.cidade,
     uf: (cliente as Record<string, unknown>).uf as string ?? "",
-    processosCount: (cliente as Record<string, unknown>).processosCount as number ?? (cliente as Record<string, unknown>).processos?.length ?? 0,
+    processosCount: ((cliente as Record<string, unknown>).processosCount as number | undefined) ?? ((cliente as Record<string, unknown>).processos as unknown[] | undefined)?.length ?? 0,
     listaProcessos: [],
     totalPago: numberValue(cliente.totalPago),
     status: cliente.status === "Inativo" ? "Inativo" : "Ativo",
