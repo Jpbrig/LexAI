@@ -227,7 +227,13 @@ model Cliente {
   documento   String
   email       String
   telefone    String
+  cep         String?
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
   cidade      String
+  uf          String?
   totalPago   Float     @default(0)
   status      String    @default("Ativo")
   observacoes String?   @db.Text

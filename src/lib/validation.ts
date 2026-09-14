@@ -41,7 +41,13 @@ export const clienteSchema = z.object({
   documento: z.string().trim().min(5).max(30),
   email: z.string().trim().email().max(254).or(z.literal("")),
   telefone: z.string().trim().max(40),
+  cep: z.string().trim().max(10).optional().default(""),
+  logradouro: z.string().trim().max(200).optional().default(""),
+  numero: z.string().trim().max(20).optional().default(""),
+  complemento: z.string().trim().max(100).optional().default(""),
+  bairro: z.string().trim().max(100).optional().default(""),
   cidade: z.string().trim().max(120),
+  uf: z.string().trim().max(2).optional().default(""),
   observacoes: z.string().max(20_000).optional().default(""),
 });
 
