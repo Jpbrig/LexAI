@@ -499,8 +499,13 @@ INTEGRATION_ENCRYPTION_KEY=
 
 ### Segurança
 - O sistema valida sessão, workspace e role em cada rota usando `getAuthContext()`.
+- Uma `AppSession` ativa, não revogada e não expirada é obrigatória; a role é sempre lida da membership atual no banco.
 - Não confia em dados enviados pelo frontend para decidir permissões.
 - A lógica de autorização funcional fica em `src/lib/authorization.ts`.
+- Credenciais por workspace são cifradas com AES-256-GCM. Defina `INTEGRATION_ENCRYPTION_KEY` com 32 bytes em Base64 ou 64 caracteres hexadecimais antes de salvar credenciais; o valor jamais é retornado pela API.
+- Convites de workspace usam token aleatório com hash armazenado, uso único e validade de sete dias. A rota de aceite é `POST /api/workspace/invitations/accept`.
+- Com `RESEND_API_KEY` e `EMAIL_FROM` configurados, os convites são enviados por e-mail; sem essas variáveis, a API retorna o link manualmente.
+- Limites locais protegem recuperação de senha e convites. Em ambiente serverless com múltiplas instâncias, configure um limitador distribuído (Redis/Upstash) antes de considerar essa proteção suficiente.
 
 ### IA
 - O assistente jurídico usa Gemini e recebe contexto do usuário para personalização por perfil.

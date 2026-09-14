@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { canMutate } from "@/lib/authorization";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 import { getAuthContext, forbiddenResponse, notFoundResponse, unauthorizedResponse } from "@/lib/auth-guard";
 import { agendaPatchSchema, agendaSchema } from "@/lib/validation";
 
@@ -10,6 +10,7 @@ export async function GET() {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
+    if (!hasPermission(context, PERMISSIONS.CALENDAR_READ)) return forbiddenResponse();
 
     const eventos = await prisma.eventoAgenda.findMany({
       where: { workspaceId: context.workspaceId },
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
-    if (!canMutate(context)) return forbiddenResponse();
+    if (!hasPermission(context, PERMISSIONS.CALENDAR_CREATE)) return forbiddenResponse();
 
     const parsed = agendaSchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -53,7 +54,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
-    if (!canMutate(context)) return forbiddenResponse();
+    if (!hasPermission(context, PERMISSIONS.CALENDAR_UPDATE)) return forbiddenResponse();
 
     const parsed = agendaPatchSchema.safeParse(await req.json());
     if (!parsed.success) {

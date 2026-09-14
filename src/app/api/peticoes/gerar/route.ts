@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { requireServerSecret } from "@/lib/env";
+import { forbiddenResponse } from "@/lib/auth-guard";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
 const pieceTypes = [
   "inicial",
@@ -46,7 +48,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    if (!(await getAuthContext())) return unauthorizedResponse();
+    const authContext = await getAuthContext();
+    if (!authContext) return unauthorizedResponse();
+    if (!hasPermission(authContext, PERMISSIONS.PETITIONS_CREATE)) return forbiddenResponse();
 
     const apiKey = requireServerSecret("GEMINI_API_KEY");
     if (!apiKey) {

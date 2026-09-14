@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { forbiddenResponse, getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
 export async function GET() {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
+    if (!hasPermission(context, PERMISSIONS.USERS_READ)) return forbiddenResponse();
 
     const members = await prisma.membership.findMany({
       where: { workspaceId: context.workspaceId },

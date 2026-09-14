@@ -115,18 +115,22 @@ model Workspace {
 }
 
 model Membership {
-  id          String           @id @default(cuid())
-  workspaceId String
-  userId      String
-  role        WorkspaceRole    @default(MEMBER)
-  status      MembershipStatus @default(ACTIVE)
-  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id                String           @id @default(cuid())
+  workspaceId       String
+  userId            String
+  role              WorkspaceRole    @default(MEMBER)
+  status            MembershipStatus @default(ACTIVE)
+  inviteTokenHash   String?          @unique
+  inviteExpiresAt   DateTime?
+  inviteAcceptedAt  DateTime?
+  workspace         Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@unique([workspaceId, userId])
   @@index([userId, status])
+  @@index([inviteExpiresAt])
 }
 
 model AppSession {

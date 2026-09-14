@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { isRateLimited } from "@/lib/rate-limit";
 
 const schema = z.object({
   token: z.string().regex(/^[a-f0-9]{64}$/i),
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
+    if (isRateLimited(req, "reset-password", 8, 15 * 60 * 1000)) return NextResponse.json({ error: "Muitas tentativas. Aguarde alguns minutos." }, { status: 429 });
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) {
       return NextResponse.json({ error: "Link ou senha inválidos." }, { status: 400 });

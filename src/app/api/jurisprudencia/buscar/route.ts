@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { forbiddenResponse, getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { requireServerSecret } from "@/lib/env";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
 const requestSchema = z.object({
   termo: z.string().trim().min(2).max(240),
@@ -51,7 +52,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
-    if (!(await getAuthContext())) return unauthorizedResponse();
+    const context = await getAuthContext();
+    if (!context) return unauthorizedResponse();
+    if (!hasPermission(context, PERMISSIONS.AI_TOOLS_USE)) return forbiddenResponse();
 
     const parsed = requestSchema.safeParse(await req.json());
     if (!parsed.success) {

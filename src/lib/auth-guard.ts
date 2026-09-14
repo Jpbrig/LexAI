@@ -41,42 +41,15 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   if (!userId) return null;
 
-  const activeMembership = await prisma.membership.findFirst({
-    where: {
-      userId,
-      status: "ACTIVE",
-    },
-    orderBy: { createdAt: "asc" },
-    select: {
-      workspaceId: true,
-      role: true,
-      status: true,
-    },
-  });
+  const workspaceId = session?.workspaceId;
+  const requestedSessionId = session?.sessionId;
 
-  const workspaceId = session?.workspaceId ?? activeMembership?.workspaceId;
-  const requestedSessionId = session?.sessionId ?? userId;
+  // Uma sessão de aplicação e o workspace explícito são obrigatórios. Não
+  // usamos fallback para userId/membership: isso impediria a revogação de
+  // surtir efeito em JWTs emitidos antes de uma remoção de membro.
+  if (!workspaceId || !requestedSessionId) return null;
 
-  if (!workspaceId) return null;
-
-  const activeSession = requestedSessionId
-    ? await prisma.appSession.findFirst({
-        where: {
-          id: requestedSessionId,
-          userId,
-          workspaceId,
-          revokedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-        select: {
-          id: true,
-          userId: true,
-          workspaceId: true,
-        },
-      })
-    : null;
-
-  const [membership, user] = await Promise.all([
+  const [membership, user, activeSession] = await Promise.all([
     prisma.membership.findUnique({
       where: {
         workspaceId_userId: {
@@ -93,24 +66,27 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       where: { id: userId },
       select: { platformRole: true },
     }),
+    prisma.appSession.findFirst({
+      where: {
+        id: requestedSessionId,
+        userId,
+        workspaceId,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+    }),
   ]);
 
-  const effectiveRole = (session?.role as WorkspaceRole | undefined) ?? membership?.role ?? activeMembership?.role ?? "MEMBER";
-  const effectiveMembershipStatus = membership?.status ?? activeMembership?.status ?? "ACTIVE";
-
-  if (membership && membership.status !== "ACTIVE") {
-    return null;
-  }
-
-  if (!membership && activeMembership?.status !== "ACTIVE" && effectiveMembershipStatus !== "ACTIVE") {
-    return null;
-  }
+  if (!activeSession || !membership || membership.status !== "ACTIVE") return null;
 
   return {
     userId,
     workspaceId,
-    sessionId: activeSession?.id ?? requestedSessionId,
-    role: effectiveRole as WorkspaceRole,
+    sessionId: activeSession.id,
+    // O banco é a fonte de verdade: assim alterações de papel têm efeito
+    // imediato, sem esperar a expiração do JWT.
+    role: membership.role as WorkspaceRole,
     isPlatformAdmin: user?.platformRole === "PLATFORM_ADMIN",
   };
 }

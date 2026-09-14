@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { canMutate } from "@/lib/authorization";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 import { getAuthContext, forbiddenResponse, unauthorizedResponse } from "@/lib/auth-guard";
 import { clienteSchema } from "@/lib/validation";
 
@@ -10,6 +10,7 @@ export async function GET() {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
+    if (!hasPermission(context, PERMISSIONS.CLIENTS_READ)) return forbiddenResponse();
 
     const clientes = await prisma.cliente.findMany({
       where: { workspaceId: context.workspaceId },
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
-    if (!canMutate(context)) return forbiddenResponse();
+    if (!hasPermission(context, PERMISSIONS.CLIENTS_CREATE)) return forbiddenResponse();
 
     const parsed = clienteSchema.safeParse(await req.json());
     if (!parsed.success) {

@@ -3,6 +3,9 @@ import { z } from "zod";
 import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { env } from "@/lib/env";
 import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
+import { forbiddenResponse } from "@/lib/auth-guard";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
+import { logAuditAction } from "@/lib/audit";
 
 const requestSchema = z.object({
   nomeSignatario: z.string().trim().min(2).max(160),
@@ -19,6 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
+    if (!hasPermission(authContext, PERMISSIONS.PETITIONS_SEND)) return forbiddenResponse();
 
     const clicsignApiKey = await getWorkspaceIntegrationValue(authContext.workspaceId, "CLICSIGN", "CLICSIGN_API_KEY");
     if (!clicsignApiKey) {
@@ -134,6 +138,14 @@ export async function POST(req: NextRequest) {
       console.error("ClicSign não conseguiu disparar a notificação", { status: notificationResponse.status });
       return NextResponse.json({ error: "Documento criado, mas o convite de assinatura não foi enviado." }, { status: 502 });
     }
+
+    await logAuditAction({
+      action: "SIGNATURE_SENT",
+      resource: "clicsign_document",
+      resourceId: documentKey,
+      context: authContext,
+      metadata: { signerKey, metodoAutenticacao },
+    });
 
     return NextResponse.json({
       sucesso: true,

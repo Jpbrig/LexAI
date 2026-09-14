@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { requireServerSecret } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
+import { forbiddenResponse } from "@/lib/auth-guard";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
 const MAX_MEMORY_MESSAGES = 8;
 
@@ -122,6 +124,7 @@ export async function POST(req: NextRequest) {
   try {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
+    if (!hasPermission(authContext, PERMISSIONS.AI_TOOLS_USE)) return forbiddenResponse();
 
     const [userProfile, membership, existingAppSession] = await Promise.all([
       prisma.user.findUnique({

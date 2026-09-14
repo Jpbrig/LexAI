@@ -20,6 +20,7 @@ export type AuditAction =
   | "WORKSPACE_DELETED"
   // Membros
   | "MEMBER_INVITED"
+  | "MEMBER_ACCEPTED"
   | "MEMBER_ROLE_CHANGED"
   | "MEMBER_REMOVED"
   | "MEMBER_SUSPENDED"
@@ -33,6 +34,8 @@ export type AuditAction =
   // Assinatura
   | "SUBSCRIPTION_CHANGED"
   | "SUBSCRIPTION_CANCELLED"
+  | "INTEGRATION_UPDATED"
+  | "SIGNATURE_SENT"
   // Impersonation
   | "IMPERSONATION_STARTED"
   | "IMPERSONATION_ENDED"

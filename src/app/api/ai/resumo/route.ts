@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
 import { z } from "zod";
+import { forbiddenResponse } from "@/lib/auth-guard";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
 const requestSchema = z.object({
   texto: z.string().trim().min(1).max(100_000),
@@ -14,6 +16,7 @@ export async function POST(req: NextRequest) {
   try {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
+    if (!hasPermission(authContext, PERMISSIONS.AI_TOOLS_USE)) return forbiddenResponse();
 
     const parsed = requestSchema.safeParse(await req.json());
     if (!parsed.success) {

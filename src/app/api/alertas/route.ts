@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { canMutate } from "@/lib/authorization";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 import { getAuthContext, forbiddenResponse, notFoundResponse, unauthorizedResponse } from "@/lib/auth-guard";
 import { alertaPatchSchema, alertaSchema } from "@/lib/validation";
 
@@ -10,6 +10,7 @@ export async function GET() {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
+    if (!hasPermission(context, PERMISSIONS.PROCESSES_READ)) return forbiddenResponse();
 
     const alertas = await prisma.alerta.findMany({
       where: { workspaceId: context.workspaceId },
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
-    if (!canMutate(context)) return forbiddenResponse();
+    if (!hasPermission(context, PERMISSIONS.PROCESSES_UPDATE)) return forbiddenResponse();
 
     const parsed = alertaSchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -66,7 +67,7 @@ export async function PATCH(req: NextRequest) {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
-    if (!canMutate(context)) return forbiddenResponse();
+    if (!hasPermission(context, PERMISSIONS.PROCESSES_UPDATE)) return forbiddenResponse();
 
     const parsed = alertaPatchSchema.safeParse(await req.json());
     if (!parsed.success) {

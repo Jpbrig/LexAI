@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { forbiddenResponse, getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { prisma } from "@/lib/prisma";
+import { encryptIntegrationValue } from "@/lib/integration-credentials";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
+import { logAuditAction } from "@/lib/audit";
 
 const supportedProviders = [
   "DATAJUD",
@@ -27,12 +30,13 @@ export async function GET() {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
+    if (!hasPermission(context, PERMISSIONS.INTEGRATIONS_READ)) return forbiddenResponse();
 
     const rows = await prisma.integrationCredential.findMany({
       where: { workspaceId: context.workspaceId },
       select: {
         provider: true,
-        encryptedValue: true,
+        id: true,
         status: true,
       },
     });
@@ -41,8 +45,7 @@ export async function GET() {
       const row = rows.find((item) => item.provider === provider);
       return {
         provider,
-        configured: Boolean(row?.encryptedValue?.trim()),
-        value: row?.encryptedValue ?? "",
+        configured: Boolean(row),
       };
     });
 
@@ -57,6 +60,7 @@ export async function POST(req: Request) {
   try {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
+    if (!hasPermission(context, PERMISSIONS.INTEGRATIONS_MANAGE)) return forbiddenResponse();
 
     const body = await req.json().catch(() => null);
     const parsed = requestSchema.safeParse(body);
@@ -76,6 +80,14 @@ export async function POST(req: Request) {
         },
       });
 
+      await logAuditAction({
+        action: "INTEGRATION_UPDATED",
+        resource: "integration_credential",
+        workspaceId: context.workspaceId,
+        userId: context.userId,
+        metadata: { provider, configured: false },
+      });
+
       return NextResponse.json({ success: true, configured: false });
     }
 
@@ -89,14 +101,22 @@ export async function POST(req: Request) {
       create: {
         workspaceId: context.workspaceId,
         provider,
-        encryptedValue: normalizedValue,
+        encryptedValue: encryptIntegrationValue(normalizedValue),
         status: "CONFIGURED",
       },
       update: {
-        encryptedValue: normalizedValue,
+        encryptedValue: encryptIntegrationValue(normalizedValue),
         status: "CONFIGURED",
         lastCheckedAt: new Date(),
       },
+    });
+
+    await logAuditAction({
+      action: "INTEGRATION_UPDATED",
+      resource: "integration_credential",
+      workspaceId: context.workspaceId,
+      userId: context.userId,
+      metadata: { provider, configured: true },
     });
 
     return NextResponse.json({ success: true, configured: true });

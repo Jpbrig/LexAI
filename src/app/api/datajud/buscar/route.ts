@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
+import { forbiddenResponse, getAuthContext, unauthorizedResponse } from "@/lib/auth-guard";
 import { requireServerSecret } from "@/lib/env";
 import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
+import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
 
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
   try {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
+    if (!hasPermission(authContext, PERMISSIONS.PROCESSES_READ)) return forbiddenResponse();
 
     const apiKey = await getWorkspaceIntegrationValue(authContext.workspaceId, "DATAJUD", "DATAJUD_API_KEY") || requireServerSecret("DATAJUD_API_KEY");
     if (!apiKey) {
