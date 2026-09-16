@@ -97,11 +97,11 @@ export default function DashboardPage() {
   const [currentOnboardingStep, setCurrentOnboardingStep] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let isMounted = true;
 
     async function carregarDashboard() {
       try {
-        const response = await fetch("/api/dashboard", { signal: controller.signal });
+        const response = await fetch("/api/dashboard");
 
         if (!response.ok) {
           if (response.status === 401) {
@@ -114,24 +114,29 @@ export default function DashboardPage() {
         }
 
         const responseData = (await response.json()) as DashboardResponse;
-        setData(responseData);
-        setOnboardingState({
-          workspace: false,
-          processos: false,
-          clientes: false,
-          assistente: false,
-          ...(responseData.onboardingState ?? {}),
-        });
+        if (isMounted) {
+          setData(responseData);
+          setOnboardingState({
+            workspace: false,
+            processos: false,
+            clientes: false,
+            assistente: false,
+            ...(responseData.onboardingState ?? {}),
+          });
+        }
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
         console.error("Erro ao carregar dashboard:", error);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
 
     void carregarDashboard();
-    return () => controller.abort();
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   async function persistOnboardingState(nextState: Record<string, boolean>) {
