@@ -12,7 +12,19 @@ export async function GET() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const [totalProcessos, processosAtivos, movimentacoesHoje, totalAlertas, movimentacoesRecentes, appSession] = await Promise.all([
+    const [
+      user,
+      totalProcessos,
+      processosAtivos,
+      movimentacoesHoje,
+      totalAlertas,
+      movimentacoesRecentes,
+      appSession,
+    ] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: context.userId },
+        select: { name: true, email: true, oab: true, plano: true },
+      }),
       prisma.processo.count({
         where: { workspaceId: context.workspaceId },
       }),
@@ -32,7 +44,12 @@ export async function GET() {
         where: { processo: { workspaceId: context.workspaceId } },
         orderBy: { data: "desc" },
         take: 20,
-        include: {
+        select: {
+          id: true,
+          tipo: true,
+          descricao: true,
+          resumoIa: true,
+          data: true,
           processo: {
             select: { id: true, numeroCnj: true, tribunal: true },
           },
@@ -43,11 +60,6 @@ export async function GET() {
         select: { onboardingState: true },
       }),
     ]);
-
-    const user = await prisma.user.findUnique({
-      where: { id: context.userId },
-      select: { name: true, email: true, oab: true, plano: true },
-    });
 
     if (!user) return unauthorizedResponse();
 
