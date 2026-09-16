@@ -69,6 +69,12 @@ export type DashboardResponse = {
     movimentacoesHoje?: number;
     totalAlertas?: number;
   };
+  weeklyPerformanceData?: Array<{
+    day: string;
+    processos: number;
+    movimentacoes: number;
+    alertas: number;
+  }>;
   onboardingState?: Record<string, boolean>;
   processos?: ProcessoListItem[];
   recentMovimentacoes?: DashboardMovimentacao[];

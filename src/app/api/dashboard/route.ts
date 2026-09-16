@@ -12,6 +12,10 @@ export async function GET() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
     const [
       user,
       totalProcessos,
@@ -20,6 +24,9 @@ export async function GET() {
       totalAlertas,
       movimentacoesRecentes,
       appSession,
+      processosSemana,
+      movimentacoesSemana,
+      alertasSemana,
     ] = await Promise.all([
       prisma.user.findUnique({
         where: { id: context.userId },
@@ -59,6 +66,18 @@ export async function GET() {
         where: { id: context.sessionId },
         select: { onboardingState: true },
       }),
+      prisma.processo.findMany({
+        where: { workspaceId: context.workspaceId, createdAt: { gte: sevenDaysAgo } },
+        select: { createdAt: true },
+      }),
+      prisma.movimentacao.findMany({
+        where: { processo: { workspaceId: context.workspaceId }, data: { gte: sevenDaysAgo } },
+        select: { data: true },
+      }),
+      prisma.alerta.findMany({
+        where: { workspaceId: context.workspaceId, ativo: true, createdAt: { gte: sevenDaysAgo } },
+        select: { createdAt: true },
+      }),
     ]);
 
     if (!user) return unauthorizedResponse();
@@ -75,6 +94,34 @@ export async function GET() {
       urgente: mov.tipo === "Sentença" || mov.tipo === "Acórdão",
     }));
 
+    // Agregação dos últimos 7 dias 100% REAL do PostgreSQL
+    const daysOfWeek = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const weeklyPerformanceData = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toISOString().split("T")[0];
+      const dayLabel = daysOfWeek[d.getDay()];
+
+      const procCount = processosSemana.filter(
+        (p) => new Date(p.createdAt).toISOString().split("T")[0] === dayStr
+      ).length;
+      const movCount = movimentacoesSemana.filter(
+        (m) => new Date(m.data).toISOString().split("T")[0] === dayStr
+      ).length;
+      const alertCount = alertasSemana.filter(
+        (a) => new Date(a.createdAt).toISOString().split("T")[0] === dayStr
+      ).length;
+
+      weeklyPerformanceData.push({
+        day: dayLabel,
+        processos: procCount,
+        movimentacoes: movCount,
+        alertas: alertCount,
+      });
+    }
+
     const onboardingState =
       typeof appSession?.onboardingState === "object" && appSession.onboardingState !== null
         ? (appSession.onboardingState as Record<string, boolean>)
@@ -88,6 +135,7 @@ export async function GET() {
         movimentacoesHoje,
         totalAlertas,
       },
+      weeklyPerformanceData,
       onboardingState,
       recentMovimentacoes: formattedMovimentacoes,
     });

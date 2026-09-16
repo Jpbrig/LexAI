@@ -247,20 +247,24 @@ export default function DashboardPage() {
   const currentStep = onboardingChecklist[currentOnboardingStep] ?? onboardingChecklist[0];
 
   const weeklyPerformanceData = useMemo(() => {
-    const baseProcesses = Math.max(8, Math.min(30, (data?.stats?.totalProcessos ?? 0) / 2));
-    const baseMovements = Math.max(5, Math.min(22, (data?.stats?.movimentacoesHoje ?? 0) + 4));
-    const baseAlerts = Math.max(1, Math.min(12, (data?.stats?.totalAlertas ?? 0) + 1));
+    if (data?.weeklyPerformanceData && data.weeklyPerformanceData.length > 0) {
+      return data.weeklyPerformanceData;
+    }
+
+    const baseProcesses = Math.max(0, (data?.stats?.totalProcessos ?? 0));
+    const baseMovements = Math.max(0, (data?.stats?.movimentacoesHoje ?? 0));
+    const baseAlerts = Math.max(0, (data?.stats?.totalAlertas ?? 0));
 
     return [
-      { day: "Seg", processos: Math.round(baseProcesses * 0.82), movimentacoes: Math.round(baseMovements * 0.9), alertas: Math.round(baseAlerts * 0.75) },
-      { day: "Ter", processos: Math.round(baseProcesses * 0.95), movimentacoes: Math.round(baseMovements * 1.05), alertas: Math.round(baseAlerts * 0.88) },
-      { day: "Qua", processos: Math.round(baseProcesses * 1.05), movimentacoes: Math.round(baseMovements * 1.08), alertas: Math.round(baseAlerts * 0.96) },
-      { day: "Qui", processos: Math.round(baseProcesses * 1.18), movimentacoes: Math.round(baseMovements * 1.12), alertas: Math.round(baseAlerts * 1.08) },
-      { day: "Sex", processos: Math.round(baseProcesses * 1.24), movimentacoes: Math.round(baseMovements * 1.17), alertas: Math.round(baseAlerts * 1.12) },
-      { day: "Sáb", processos: Math.round(baseProcesses * 0.91), movimentacoes: Math.round(baseMovements * 0.82), alertas: Math.round(baseAlerts * 0.7) },
-      { day: "Dom", processos: Math.round(baseProcesses * 0.86), movimentacoes: Math.round(baseMovements * 0.78), alertas: Math.round(baseAlerts * 0.68) },
+      { day: "Seg", processos: baseProcesses, movimentacoes: baseMovements, alertas: baseAlerts },
+      { day: "Ter", processos: baseProcesses, movimentacoes: baseMovements, alertas: baseAlerts },
+      { day: "Qua", processos: baseProcesses, movimentacoes: baseMovements, alertas: baseAlerts },
+      { day: "Qui", processos: baseProcesses, movimentacoes: baseMovements, alertas: baseAlerts },
+      { day: "Sex", processos: baseProcesses, movimentacoes: baseMovements, alertas: baseAlerts },
+      { day: "Sáb", processos: baseProcesses, movimentacoes: baseMovements, alertas: baseAlerts },
+      { day: "Dom", processos: baseProcesses, movimentacoes: baseMovements, alertas: baseAlerts },
     ];
-  }, [data?.stats?.totalProcessos, data?.stats?.movimentacoesHoje, data?.stats?.totalAlertas]);
+  }, [data?.weeklyPerformanceData, data?.stats?.totalProcessos, data?.stats?.movimentacoesHoje, data?.stats?.totalAlertas]);
 
   const teamPerformanceData = useMemo(() => [
     { name: "Processos", value: data?.stats?.processosAtivos ?? 0 },
