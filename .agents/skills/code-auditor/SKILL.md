@@ -24,3 +24,4 @@ Esta skill fornece instruções para auditar e garantir a conformidade dos endpo
 4. **Validação de Inputs:**
    - Confirmar o uso de `zod` com `safeParse()`.
    - Garantir que respostas de erro 400 tratem corretamente campos inválidos.
+

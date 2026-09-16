@@ -14,3 +14,4 @@
 - **Prisma ORM:** Manter esquemas centralizados em `prisma/schema.prisma`.
 - **Credenciais de Integração:** Utilizar `getWorkspaceIntegrationValue(workspaceId, provider, envFallback)` de `@/lib/integration-credentials` para suporte ao modelo SaaS centralizado com suporte a BYOK (Bring Your Own Key).
 - **Timeouts Defensivos:** Sempre envolver chamadas a APIs externas (DataJud, Gemini, OpenAI, ClicSign) com `AbortController` (timeout padrão de 10s a 30s).
+

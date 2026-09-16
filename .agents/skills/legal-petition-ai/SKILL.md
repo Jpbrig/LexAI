@@ -17,3 +17,4 @@ Skill focada nos assistentes generativos de Inteligência Artificial Jurídica d
   - Primário: Google Gemini 1.5 Flash / Pro (via `GEMINI_API_KEY`).
   - Fallback: OpenAI GPT-4o-mini (via `OPENAI_API_KEY`).
 - **Performance:** As chaves de integração devem ser buscadas uma única vez por requisição para evitar chamadas redundantes ao PostgreSQL.
+
