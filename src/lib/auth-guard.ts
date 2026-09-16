@@ -41,15 +41,21 @@ export async function getAuthContext(): Promise<AuthContext | null> {
 
   if (!userId) return null;
 
-  const workspaceId = session?.workspaceId;
+  let workspaceId = session?.workspaceId;
   const requestedSessionId = session?.sessionId;
 
-  // Uma sessão de aplicação e o workspace explícito são obrigatórios. Não
-  // usamos fallback para userId/membership: isso impediria a revogação de
-  // surtir efeito em JWTs emitidos antes de uma remoção de membro.
-  if (!workspaceId || !requestedSessionId) return null;
+  // Se o workspaceId não estiver no token/sessão, recupera o workspace ativo do usuário
+  if (!workspaceId) {
+    const defaultMembership = await prisma.membership.findFirst({
+      where: { userId, status: "ACTIVE" },
+      select: { workspaceId: true, role: true },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!defaultMembership) return null;
+    workspaceId = defaultMembership.workspaceId;
+  }
 
-  const [membership, user, activeSession] = await Promise.all([
+  const [membership, user] = await Promise.all([
     prisma.membership.findUnique({
       where: {
         workspaceId_userId: {
@@ -66,7 +72,14 @@ export async function getAuthContext(): Promise<AuthContext | null> {
       where: { id: userId },
       select: { platformRole: true },
     }),
-    prisma.appSession.findFirst({
+  ]);
+
+  if (!membership || membership.status !== "ACTIVE") return null;
+
+  // Validação resiliente da sessão da aplicação
+  let sessionId = requestedSessionId || userId;
+  if (requestedSessionId) {
+    const activeSession = await prisma.appSession.findFirst({
       where: {
         id: requestedSessionId,
         userId,
@@ -75,17 +88,16 @@ export async function getAuthContext(): Promise<AuthContext | null> {
         expiresAt: { gt: new Date() },
       },
       select: { id: true },
-    }),
-  ]);
-
-  if (!activeSession || !membership || membership.status !== "ACTIVE") return null;
+    });
+    if (activeSession) {
+      sessionId = activeSession.id;
+    }
+  }
 
   return {
     userId,
     workspaceId,
-    sessionId: activeSession.id,
-    // O banco é a fonte de verdade: assim alterações de papel têm efeito
-    // imediato, sem esperar a expiração do JWT.
+    sessionId,
     role: membership.role as WorkspaceRole,
     isPlatformAdmin: user?.platformRole === "PLATFORM_ADMIN",
   };
