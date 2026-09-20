@@ -143,12 +143,20 @@ export default function TabJurisprudencia() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-1">
-                <button onClick={() => copiarCitacao(item.citacaoPeticao || item.ementa, String(idx))} className="btn-primary text-xs py-2 px-4">
-                  {copiadoId === String(idx) ? "Copiada!" : "📋 Copiar Citação"}
-                </button>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => copiarCitacao(item.citacaoPeticao || item.ementa, String(idx))} className="btn-primary text-xs py-2 px-4">
+                    {copiadoId === String(idx) ? "Copiada!" : "📋 Copiar Citação"}
+                  </button>
+                  <a
+                    href={`/dashboard/ferramentas?tab=peticoes&fatos=${encodeURIComponent(`[Precedente ${item.tribunal} - ${item.numeroProcesso}]:\n${item.citacaoPeticao || item.ementa}`)}`}
+                    className="btn-outline text-xs py-2 px-3 flex items-center gap-1 border-amber-500/30 text-amber-900 bg-amber-50 hover:bg-amber-100"
+                  >
+                    <span>📄 Usar na Petição</span>
+                  </a>
+                </div>
                 <a href={item.fonteUrl || "#"} target="_blank" rel="noopener noreferrer" className="btn-outline text-xs py-2 px-4 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-slate-500" /> Ver no Jusbrasil ↗
+                  <Globe className="w-3.5 h-3.5 text-slate-500" /> Ver Fonte Oficial ↗
                 </a>
               </div>
             </div>
