@@ -76,3 +76,13 @@ export const alertaPatchSchema = z.object({
   id: z.string().cuid(),
   ativo: z.boolean(),
 });
+
+export const anamneseSchema = z.object({
+  tituloCaso: z.string().trim().min(2).max(200),
+  areaDireito: z.enum(["CIVEL", "TRABALHISTA", "FAMILIA", "CONSUMIDOR", "PREVIDENCIARIO", "PENAL", "EMPRESARIAL", "TRIBUTARIO", "OUTROS"]).default("CIVEL"),
+  relatoFatos: z.string().trim().min(5).max(100_000),
+  transcricaoAudio: z.string().max(100_000).optional().default(""),
+  pedidosPretendidos: z.string().max(20_000).optional().default(""),
+  provasDisponiveis: z.string().max(20_000).optional().default(""),
+  clienteId: z.string().cuid().optional().nullable(),
+});

@@ -24,6 +24,7 @@ import {
   Users,
   Calendar,
   ShieldCheck,
+  ClipboardList,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -34,6 +35,7 @@ const mainNavItems = [
 ];
 
 const ferramentasNavItems = [
+  { href: "/dashboard/ferramentas?tab=anamnese", tab: "anamnese", label: "Anamnese & Triagem IA", icon: ClipboardList },
   { href: "/dashboard/ferramentas?tab=calculadoras", tab: "calculadoras", label: "Cálculos Jurídicos (13)", icon: Calculator },
   { href: "/dashboard/ferramentas?tab=consultas", tab: "consultas", label: "Consultas Legais (13)", icon: Search },
   { href: "/dashboard/ferramentas?tab=outros", tab: "outros", label: "Recursos & IA (2)", icon: Sparkles },

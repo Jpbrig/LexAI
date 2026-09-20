@@ -5,6 +5,9 @@ import { requireServerSecret } from "@/lib/env";
 import { forbiddenResponse } from "@/lib/auth-guard";
 import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
+import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
+import { isRateLimited } from "@/lib/rate-limit";
+
 const pieceTypes = [
   "inicial",
   "contestacao",
@@ -51,8 +54,11 @@ export async function POST(req: NextRequest) {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
     if (!hasPermission(authContext, PERMISSIONS.PETITIONS_CREATE)) return forbiddenResponse();
+    if (await isRateLimited(req, "peticoes-gerar", 10, 60_000)) {
+      return NextResponse.json({ error: "Limite de geração de petições por minuto atingido." }, { status: 429 });
+    }
 
-    const apiKey = requireServerSecret("GEMINI_API_KEY");
+    const apiKey = (await getWorkspaceIntegrationValue(authContext.workspaceId, "GEMINI", "GEMINI_API_KEY")) || requireServerSecret("GEMINI_API_KEY");
     if (!apiKey) {
       return NextResponse.json(
         { error: "A geração de documentos está temporariamente indisponível." },

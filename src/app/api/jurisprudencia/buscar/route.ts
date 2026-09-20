@@ -4,6 +4,9 @@ import { forbiddenResponse, getAuthContext, unauthorizedResponse } from "@/lib/a
 import { requireServerSecret } from "@/lib/env";
 import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
+import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
+import { isRateLimited } from "@/lib/rate-limit";
+
 const requestSchema = z.object({
   termo: z.string().trim().min(2).max(240),
   tribunal: z.string().trim().max(20).optional().default("TODOS"),
@@ -55,6 +58,9 @@ export async function POST(req: NextRequest) {
     const context = await getAuthContext();
     if (!context) return unauthorizedResponse();
     if (!hasPermission(context, PERMISSIONS.AI_TOOLS_USE)) return forbiddenResponse();
+    if (await isRateLimited(req, "jurisprudencia-buscar", 10, 60_000)) {
+      return NextResponse.json({ error: "Limite de pesquisas de jurisprudência atingido." }, { status: 429 });
+    }
 
     const parsed = requestSchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -67,7 +73,7 @@ export async function POST(req: NextRequest) {
       ? linksOficiais
       : linksOficiais.filter((link) => link.tipo === tribunal || link.tipo === "Jusbrasil");
 
-    const geminiKey = requireServerSecret("GEMINI_API_KEY");
+    const geminiKey = (await getWorkspaceIntegrationValue(context.workspaceId, "GEMINI", "GEMINI_API_KEY")) || requireServerSecret("GEMINI_API_KEY");
     if (!geminiKey) {
       return NextResponse.json({
         sucesso: true,

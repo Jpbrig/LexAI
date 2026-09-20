@@ -67,6 +67,7 @@ model User {
   clientes            Cliente[]
   agenda              EventoAgenda[]
   auditLogs           AuditLog[]
+  anamneses           AnamneseCaso[]
 
   @@index([email])
 }
@@ -108,6 +109,7 @@ model Workspace {
   notifications Notification[]
   subscription  Subscription?
   auditLogs     AuditLog[]
+  anamneses     AnamneseCaso[]
   createdAt     DateTime                @default(now())
   updatedAt     DateTime                @updatedAt
 
@@ -238,6 +240,7 @@ model Cliente {
   status      String    @default("Ativo")
   observacoes String?   @db.Text
   processos   Processo[]
+  anamneses   AnamneseCaso[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -481,3 +484,49 @@ enum SubscriptionStatus {
   INCOMPLETE
   UNPAID
 }
+
+model AnamneseCaso {
+  id                 String         @id @default(cuid())
+  workspaceId        String
+  userId             String
+  clienteId          String?
+  tituloCaso         String
+  areaDireito        AreaDireito    @default(CIVEL)
+  relatoFatos        String         @db.Text
+  transcricaoAudio   String?        @db.Text
+  pedidosPretendidos  String?        @db.Text
+  provasDisponiveis  String?        @db.Text
+  diagnosticoIa      String?        @db.Text
+  arquivosAnexos     Json?
+  status             StatusAnamnese @default(ANALISADO)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cliente   Cliente?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([userId])
+  @@index([clienteId])
+}
+
+enum AreaDireito {
+  CIVEL
+  TRABALHISTA
+  FAMILIA
+  CONSUMIDOR
+  PREVIDENCIARIO
+  PENAL
+  EMPRESARIAL
+  TRIBUTARIO
+  OUTROS
+}
+
+enum StatusAnamnese {
+  RASCUNHO
+  ANALISADO
+  CONVERTIDO
+  ARQUIVADO
+}
+

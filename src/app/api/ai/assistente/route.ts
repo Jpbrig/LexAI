@@ -6,6 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { forbiddenResponse } from "@/lib/auth-guard";
 import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 
+import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
+import { isRateLimited } from "@/lib/rate-limit";
+
 const MAX_MEMORY_MESSAGES = 8;
 
 type SessionMemory = {
@@ -125,6 +128,9 @@ export async function POST(req: NextRequest) {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
     if (!hasPermission(authContext, PERMISSIONS.AI_TOOLS_USE)) return forbiddenResponse();
+    if (await isRateLimited(req, "ai-assistente", 15, 60_000)) {
+      return NextResponse.json({ error: "Limite de mensagens no assistente atingido. Aguarde um minuto." }, { status: 429 });
+    }
 
     const [userProfile, membership, existingAppSession] = await Promise.all([
       prisma.user.findUnique({
@@ -178,7 +184,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const apiKey = requireServerSecret("GEMINI_API_KEY");
+    const apiKey = (await getWorkspaceIntegrationValue(authContext.workspaceId, "GEMINI", "GEMINI_API_KEY")) || requireServerSecret("GEMINI_API_KEY");
     if (!apiKey) {
       return NextResponse.json(
         { error: "A IA do LexAI está sendo configurada no momento. Volte em alguns minutos." },

@@ -4,6 +4,7 @@ import { isRateLimited } from "@/lib/rate-limit";
 import { requireServerSecret } from "@/lib/env";
 import { getWorkspaceIntegrationValue } from "@/lib/integration-credentials";
 import { hasPermission, PERMISSIONS } from "@/lib/authorization";
+import { logger } from "@/lib/logger";
 
 const DATAJUD_BASE = "https://api-publica.datajud.cnj.jus.br";
 
@@ -73,29 +74,36 @@ export async function POST(req: NextRequest) {
     let response: Response;
 
     try {
-      response = await fetch(`${DATAJUD_BASE}/api_publica_${endpoint}/_search`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `APIKey ${apiKey}`,
-        },
-        body: JSON.stringify({
-          query: {
-            match: {
-              numeroProcesso: numeroCnj.replace(/[^0-9]/g, ""),
-            },
+      response = await logger.trace("datajud", `Buscar processo ${tribunalCode}`, () =>
+        fetch(`${DATAJUD_BASE}/api_publica_${endpoint}/_search`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `APIKey ${apiKey}`,
           },
-          size: 1,
+          body: JSON.stringify({
+            query: {
+              match: {
+                numeroProcesso: numeroCnj.replace(/[^0-9]/g, ""),
+              },
+            },
+            size: 1,
+          }),
+          signal: controller.signal,
+          cache: "no-store",
         }),
-        signal: controller.signal,
-        cache: "no-store",
-      });
+        { workspaceId: authContext.workspaceId, userId: authContext.userId, tribunal: tribunalCode }
+      );
     } finally {
       clearTimeout(timeout);
     }
 
     if (!response.ok) {
-      console.error("DataJud respondeu com erro", { status: response.status, tribunal: tribunalCode });
+      logger.error("DataJud respondeu com erro HTTP", {
+        workspaceId: authContext.workspaceId,
+        tribunal: tribunalCode,
+        status: response.status,
+      });
       return NextResponse.json(
         { error: "Não foi possível consultar o DataJud neste momento." },
         { status: response.status >= 500 ? 502 : response.status },

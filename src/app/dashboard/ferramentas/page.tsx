@@ -12,6 +12,8 @@ import {
   FileText,
   DollarSign as MoneyIcon,
   Scale,
+  Sparkles,
+  ClipboardList,
 } from "lucide-react";
 
 // Lazy load components
@@ -25,8 +27,10 @@ const TabAssinatura = lazy(() => import("./_components/tab-assinatura"));
 const TabJurisprudencia = lazy(() => import("./_components/tab-jurisprudencia"));
 const TabFinanceiro = lazy(() => import("./_components/tab-financeiro"));
 const TabVademecum = lazy(() => import("./_components/tab-vademecum"));
+const TabAnamnese = lazy(() => import("./_components/tab-anamnese"));
 
 type FerramentaTab =
+  | "anamnese"
   | "calculadoras"
   | "consultas"
   | "outros"
@@ -39,6 +43,7 @@ type FerramentaTab =
   | "vademecum";
 
 const ferramentaTabs: FerramentaTab[] = [
+  "anamnese",
   "calculadoras",
   "consultas",
   "outros",
@@ -58,7 +63,7 @@ function isFerramentaTab(value: string | null): value is FerramentaTab {
 function TabFallback() {
   return (
     <div className="flex items-center justify-center p-12">
-      <div className="w-8 h-8 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900" />
     </div>
   );
 }
@@ -66,20 +71,14 @@ function TabFallback() {
 function FerramentasContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const activeTab: FerramentaTab = isFerramentaTab(tabParam) ? tabParam : "calculadoras";
+  const activeTab: FerramentaTab = isFerramentaTab(tabParam) ? tabParam : "anamnese";
 
   return (
     <div className="space-y-6">
-      <header className="mb-8">
-        <h1 className="text-2xl font-black text-slate-900 tracking-tight">Ferramentas Jurídicas</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Cálculos, peças processuais, inteligência artificial e utilitários para o seu dia a dia.
-        </p>
-      </header>
-
       {/* Navegação de Abas (Horizontal com Scroll) */}
       <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide border-b border-slate-200">
         {[
+          { id: "anamnese", label: "Anamnese & Triagem IA", icon: ClipboardList, color: "text-amber-500" },
           { id: "calculadoras", label: "Cálculos", icon: Calculator, color: "text-indigo-600" },
           { id: "peticoes", label: "Petições IA", icon: FileText, color: "text-amber-600" },
           { id: "assistente", label: "Assistente IA", icon: Bot, color: "text-amber-500" },
@@ -116,6 +115,7 @@ function FerramentasContent() {
 
       <div className="pt-2">
         <Suspense fallback={<TabFallback />}>
+          {activeTab === "anamnese" && <TabAnamnese />}
           {activeTab === "calculadoras" && <TabCalculadoras />}
           {activeTab === "consultas" && <TabConsultas />}
           {activeTab === "outros" && <TabOutros />}

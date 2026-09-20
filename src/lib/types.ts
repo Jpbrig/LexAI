@@ -151,3 +151,21 @@ export type GovQueryResponse = {
   }>;
   error?: string;
 };
+
+export type AnamneseCasoItem = {
+  id: string;
+  tituloCaso: string;
+  areaDireito: string;
+  relatoFatos: string;
+  transcricaoAudio?: string | null;
+  pedidosPretendidos?: string | null;
+  provasDisponiveis?: string | null;
+  diagnosticoIa?: string | null;
+  status: string;
+  createdAt: string;
+  cliente?: {
+    id: string;
+    nome: string;
+    documento: string;
+  } | null;
+};
