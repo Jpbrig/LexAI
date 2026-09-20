@@ -5,6 +5,7 @@ import { z } from "zod";
 import { forbiddenResponse } from "@/lib/auth-guard";
 import { hasPermission, PERMISSIONS } from "@/lib/authorization";
 import { isRateLimited } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 const requestSchema = z.object({
   texto: z.string().trim().min(1).max(100_000),
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest) {
     const authContext = await getAuthContext();
     if (!authContext) return unauthorizedResponse();
     if (!hasPermission(authContext, PERMISSIONS.AI_TOOLS_USE)) return forbiddenResponse();
-    if (await isRateLimited(req, "ai", 10, 60_000)) return NextResponse.json({ error: "Limite de uso da IA atingido. Aguarde um minuto." }, { status: 429 });
+    if (await isRateLimited(req, "ai-resumo", 10, 60_000)) {
+      return NextResponse.json({ error: "Limite de uso da IA atingido. Aguarde um minuto." }, { status: 429 });
+    }
 
     const parsed = requestSchema.safeParse(await req.json());
     if (!parsed.success) {
@@ -39,11 +42,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const resumo = geminiKey
-      ? await resumirComGemini(parsed.data.texto, parsed.data.tipo, apiKey)
-      : await resumirComOpenAI(parsed.data.texto, parsed.data.tipo, apiKey);
+    const resultado = await logger.trace(
+      "ai-resumo",
+      "Gerar resumo de movimentação",
+      () =>
+        geminiKey
+          ? resumirComGemini(parsed.data.texto, parsed.data.tipo, apiKey)
+          : resumirComOpenAI(parsed.data.texto, parsed.data.tipo, apiKey),
+      { workspaceId: authContext.workspaceId, userId: authContext.userId }
+    );
 
-    return NextResponse.json({ resumo });
+    return NextResponse.json({
+      resumo: resultado.resumoTecnico,
+      resumoTecnico: resultado.resumoTecnico,
+      resumoCliente: resultado.resumoCliente,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       return NextResponse.json(
@@ -52,7 +65,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.error("Erro ao gerar resumo com IA:", error);
+    logger.error("Erro ao gerar resumo de movimentação", {}, error);
     return NextResponse.json(
       { error: "Não consegui gerar o resumo agora. Tente novamente em alguns instantes." },
       { status: 502 },
@@ -82,14 +95,24 @@ async function resumirComGemini(texto: string, tipo: string, apiKey: string) {
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: buildPrompt(texto, tipo) }] }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens: 1024,
+          responseMimeType: "application/json",
+        },
       }),
     },
   );
 
   if (!response.ok) throw new Error(`Gemini respondeu ${response.status}`);
   const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "Não foi possível gerar o resumo.";
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+
+  try {
+    return JSON.parse(rawText) as { resumoTecnico: string; resumoCliente: string };
+  } catch {
+    return { resumoTecnico: rawText, resumoCliente: rawText };
+  }
 }
 
 async function resumirComOpenAI(texto: string, tipo: string, apiKey: string) {
@@ -102,31 +125,38 @@ async function resumirComOpenAI(texto: string, tipo: string, apiKey: string) {
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: buildPrompt(texto, tipo) }],
-      max_tokens: 512,
-      temperature: 0.3,
+      response_format: { type: "json_object" },
+      max_tokens: 1024,
+      temperature: 0.2,
     }),
   });
 
   if (!response.ok) throw new Error(`OpenAI respondeu ${response.status}`);
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || "Não foi possível gerar o resumo.";
+  const rawText = data.choices?.[0]?.message?.content || "{}";
+
+  try {
+    return JSON.parse(rawText) as { resumoTecnico: string; resumoCliente: string };
+  } catch {
+    return { resumoTecnico: rawText, resumoCliente: rawText };
+  }
 }
 
 function buildPrompt(texto: string, tipo: string) {
-  return `Você é um assistente jurídico brasileiro especializado em explicar decisões judiciais de forma clara para advogados.
+  return `Você é um assistente jurídico brasileiro especializado em analisar decisões judiciais e traduzir movimentações para escritórios de advocacia.
 
-Analise esta ${tipo} e gere um resumo objetivo em português do Brasil.
+Analise esta ${tipo} e retorne EXATAMENTE um objeto JSON válido (sem texto antes ou depois) com a seguinte estrutura:
 
-REGRAS:
-- Inicie com um emoji e status claro.
-- Explique o que aconteceu em 2-4 frases simples.
-- Destaque prazos ou obrigações importantes.
-- Use linguagem direta, sem jargões desnecessários.
-- Máximo 150 palavras.
-- Não invente leis, artigos, jurisprudência, processos ou prazos.
+{
+  "resumoTecnico": "Resumo técnico sucinto para o advogado com status, prazos e providências processuais.",
+  "resumoCliente": "Mensagem empática e transparente em linguagem simples (sem juridiquês) pronta para envio no WhatsApp ou e-mail ao cliente, explicando o que aconteceu e o próximo passo."
+}
+
+REGRAS RIGOROSAS:
+- Não invente leis, artigos, prazos ou dados inexistentes no texto.
+- Se houver prazo processual, destaque explicitamente em resumoTecnico.
+- Em resumoCliente, use tom cordial, tranquilo e profissional.
 
 TEXTO DA MOVIMENTAÇÃO:
-${texto}
-
-RESUMO:`;
+${texto}`;
 }
