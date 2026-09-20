@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Bot, FileText, User, FileCheck, Sparkles, AlertCircle, Printer, Info } from "lucide-react";
 
 export default function TabPeticoes() {
+  const searchParams = useSearchParams();
+
   const [tipoPeca, setTipoPeca] = useState("inicial");
   const [pRequerente, setPRequerente] = useState("");
   const [pRequerido, setPRequerido] = useState("");
@@ -12,6 +15,20 @@ export default function TabPeticoes() {
   const [pValorCausa, setPValorCausa] = useState("");
   const [pFatos, setPFatos] = useState("");
   const [pPedidos, setPPedidos] = useState("");
+
+  useEffect(() => {
+    const req = searchParams.get("requerente");
+    const fat = searchParams.get("fatos");
+    const ped = searchParams.get("pedidos");
+    const jui = searchParams.get("juizo");
+    const val = searchParams.get("valorCausa");
+
+    if (req) setPRequerente(req);
+    if (fat) setPFatos(fat);
+    if (ped) setPPedidos(ped);
+    if (jui) setPJuizo(jui);
+    if (val) setPValorCausa(val);
+  }, [searchParams]);
   
   const [loadingPeticao, setLoadingPeticao] = useState(false);
   const [erroPeticao, setErroPeticao] = useState("");

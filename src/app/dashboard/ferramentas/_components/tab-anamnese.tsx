@@ -560,10 +560,22 @@ export default function TabAnamnese() {
                   </div>
                 )}
 
-                {/* Botão de Converter em Petição */}
-                <div className="pt-4 border-t border-slate-800">
+                {/* Ações Rápidas: Gerar Petição & Notificar Cliente via WhatsApp */}
+                <div className="pt-4 border-t border-slate-800 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const msgCliente = `Olá! Registramos o atendimento referente ao caso: "${tituloCaso}".\n\n📌 Parecer preliminar: ${diagnostico.tesePrincipal || "Análise em andamento."}\n\n📄 Documentos a providenciar: ${diagnostico.provasFaltantes?.join(", ") || "Conforme combinado."}\n\nQualquer dúvida, estamos à disposição no escritório!`;
+                      navigator.clipboard.writeText(msgCliente);
+                      setMensagemSucesso("Resumo simplificado copiado! Pronto para colar no WhatsApp do cliente.");
+                    }}
+                    className="btn-outline text-amber-300 border-amber-500/40 hover:bg-amber-500/10 w-full justify-center py-2.5 text-xs flex items-center gap-2"
+                  >
+                    <span>📱 Copiar Resumo para WhatsApp do Cliente</span>
+                  </button>
+
                   <a
-                    href={`/dashboard/ferramentas?tab=peticoes&requerente=${encodeURIComponent(tituloCaso)}&fatos=${encodeURIComponent(relatoFatos)}`}
+                    href={`/dashboard/ferramentas?tab=peticoes&requerente=${encodeURIComponent(tituloCaso)}&fatos=${encodeURIComponent(relatoFatos)}&pedidos=${encodeURIComponent(pedidosPretendidos || "")}`}
                     className="btn-accent w-full justify-center py-3 text-xs shadow-lg flex items-center gap-2"
                   >
                     <span>📄 Gerar Petição Inicial deste Caso</span>
